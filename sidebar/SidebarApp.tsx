@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { SendIcon } from "lucide-react"
+import { SendHorizontalIcon } from "lucide-react"
 import './styles.css'
 
 export default function SidebarApp() {
@@ -11,7 +11,7 @@ export default function SidebarApp() {
         <div className="flex-1">
         <Input type="email" placeholder="Email" />
       </div>
-        <Button type="submit" size="icon"><SendIcon /></Button>
+        <Button type="submit" size="icon"><SendHorizontalIcon /></Button>
       </div>
     </div>
     </div>
