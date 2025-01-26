@@ -4,7 +4,7 @@ import { MessageList } from "./components/MessageList"
 import { MessageInput } from "./components/MessageInput"
 import { ConversationsPage } from "./components/ConversationsPage"
 import { Message, Conversation, createMessage } from "./types"
-import { sendMessage } from "./utils/messenger"
+import { MessageService } from "./utils/messageService"
 import './styles.css'
 
 type View = 'chat' | 'conversations';
@@ -79,7 +79,7 @@ export default function SidebarApp() {
     
     try {
       // Send message with previous messages as history
-      const messageWithResponse = await sendMessage(
+      const messageWithResponse = await MessageService.sendMessage(
         content,
         messages.length === 0 ? content : undefined, // First message is the task
         messages // Pass existing messages as history
