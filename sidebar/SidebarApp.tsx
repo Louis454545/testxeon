@@ -77,38 +77,51 @@ export default function SidebarApp() {
   const handleSubmitMessage = async (content: string) => {
     setIsSending(true)
     
+    // Create and display user message immediately
+    const userMessage = createMessage(content, true);
+    const updatedMessages = [...messages, userMessage];
+    setMessages(updatedMessages);
+    
+    // Update or create conversation
+    if (currentConversationId) {
+      updateConversation(currentConversationId, updatedMessages);
+    } else {
+      createNewConversation(updatedMessages);
+    }
+    
     try {
-      // Send message with previous messages as history
+      // Send message to API in background
       const messageWithResponse = await MessageService.sendMessage(
         content,
         messages.length === 0 ? content : undefined, // First message is the task
         messages // Pass existing messages as history
       );
 
-      const updatedMessages = [...messages, messageWithResponse];
-      setMessages(updatedMessages);
+      // Update message list with API response
+      const finalMessages = updatedMessages.map(msg =>
+        msg === userMessage ? messageWithResponse : msg
+      );
+      setMessages(finalMessages);
 
-      // Update or create conversation
+      // Update conversation with final messages
       if (currentConversationId) {
-        updateConversation(currentConversationId, updatedMessages);
-      } else {
-        createNewConversation(updatedMessages);
+        updateConversation(currentConversationId, finalMessages);
       }
-
     } catch (error) {
       console.error('Error processing message:', error);
+      // Update the user message with error state
       const errorMessage = createMessage(content, true, {
         message: 'Failed to process message',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
       
-      const updatedMessages = [...messages, errorMessage];
-      setMessages(updatedMessages);
+      const finalMessages = updatedMessages.map(msg =>
+        msg === userMessage ? errorMessage : msg
+      );
+      setMessages(finalMessages);
 
       if (currentConversationId) {
-        updateConversation(currentConversationId, updatedMessages);
-      } else {
-        createNewConversation(updatedMessages);
+        updateConversation(currentConversationId, finalMessages);
       }
     } finally {
       setIsSending(false);
