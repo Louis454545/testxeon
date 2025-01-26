@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { SendHorizontalIcon, Square } from "lucide-react"
+import { SendHorizontalIcon, Square, Plus, Settings } from "lucide-react"
 import { useState } from "react"
 import './styles.css'
 
@@ -34,8 +34,29 @@ export default function SidebarApp() {
     }, 1000)
   }
 
+  const handleNewConversation = () => {
+    setMessages([])
+    setInputValue("")
+  }
+
   return (
     <div className="h-full dark flex flex-col">
+      <div className="h-12 px-4 border-b flex justify-end items-center gap-2">
+        <Button 
+          variant="ghost" 
+          size="icon"
+          onClick={handleNewConversation}
+        >
+          <Plus size={20} />
+        </Button>
+        <Button 
+          variant="ghost" 
+          size="icon"
+        >
+          <Settings size={20} />
+        </Button>
+      </div>
+
       <div className="flex-1 overflow-y-auto p-4 space-y-4">
         {messages.map((message, index) => (
           <div
