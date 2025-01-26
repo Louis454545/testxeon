@@ -1,7 +1,7 @@
 import { Message, createMessage } from '../types';
 import { ApiResponse } from '../types/api';
 import { sendToApi } from './api';
-import { BrowserService } from './browserService';
+import { DebuggerConnectionService } from './debuggerConnection';
 import { PageCaptureService } from './pageCapture';
 
 /**
@@ -16,13 +16,11 @@ export class MessageService {
     task?: string,
     previousMessages: Message[] = []
   ): Promise<Message> {
+    let connection;
     try {
       // Connect to browser and capture page data
-      const { browser, page } = await BrowserService.connectToActiveTab();
-      const pageData = await PageCaptureService.capturePageData(page);
-      
-      // Clean up browser connection
-      await BrowserService.disconnect(browser);
+      connection = await DebuggerConnectionService.connect();
+      const pageData = await PageCaptureService.capturePageData(connection.page);
       
       // Send to API and get response
       const apiResponse = await sendToApi(
@@ -43,6 +41,11 @@ export class MessageService {
         error: error instanceof Error ? error.message : 'Unknown error'
       };
       return createMessage(content, true, errorResponse);
+    } finally {
+      // Clean up browser connection
+      if (connection) {
+        await DebuggerConnectionService.disconnect(connection.browser);
+      }
     }
   }
 }
