@@ -6,6 +6,15 @@ export interface PageData {
   screenshot: string; // Base64 encoded screenshot
 }
 
+export const nodeMap = new Map();
+
+function mapNodes(node: any) {
+  nodeMap.set(String(node.id), node);
+  if (node.children) {
+    node.children.forEach(mapNodes);
+  }
+}
+
 /**
  * Service for capturing page data including screenshots and accessibility information
  */
@@ -22,6 +31,12 @@ export class PageCaptureService {
         type: 'png'
       })
     ]);
+
+    // Map nodes from accessibility snapshot
+    nodeMap.clear(); // Clear previous mappings
+    if (accessibility) {
+      mapNodes(accessibility);
+    }
 
     return {
       accessibility,

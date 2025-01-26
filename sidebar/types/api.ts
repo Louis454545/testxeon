@@ -1,3 +1,5 @@
+import { Action } from '../utils/ActionOperator';
+
 /**
  * Represents a tab in the browser window
  */
@@ -62,4 +64,7 @@ export interface ApiResponse {
   
   /** Error information if the request failed */
   error?: string;
+
+  /** Action to be executed on the page */
+  action?: Action;
 }

@@ -3,6 +3,7 @@ import { ApiResponse } from '../types/api';
 import { sendToApi } from './api';
 import { DebuggerConnectionService } from './debuggerConnection';
 import { PageCaptureService } from './pageCapture';
+import { ActionOperator } from './ActionOperator';
 
 /**
  * Service for handling message processing and communication
@@ -29,6 +30,18 @@ export class MessageService {
         previousMessages,
         task
       );
+
+      // Handle action if present in response
+      if (apiResponse.action) {
+        const actionOperator = new ActionOperator(connection.page);
+        try {
+          const actionSuccess = await actionOperator.executeAction(apiResponse.action);
+          (window as any).lastActionSuccess = actionSuccess;
+        } catch (error) {
+          console.error('Error executing action:', error);
+          (window as any).lastActionSuccess = false;
+        }
+      }
       
       // Create and return message with API response
       return createMessage(content, true, apiResponse);
