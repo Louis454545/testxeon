@@ -9,6 +9,7 @@ export enum ActionType {
 interface ActionBase {
   type: ActionType;
   target: string;
+  description?: string;
 }
 
 interface ClickAction extends ActionBase {
@@ -18,7 +19,6 @@ interface ClickAction extends ActionBase {
 interface InputAction extends ActionBase {
   type: ActionType.INPUT;
   text: string;
-  description?: string;
 }
 
 export type Action = ClickAction | InputAction;
