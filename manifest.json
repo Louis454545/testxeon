@@ -1,10 +1,8 @@
 {
   "chromium:manifest_version": 3,
-  "firefox:manifest_version": 2,
   "version": "0.0.1",
-  "name": "testxeon",
-  "author": "Your Name",
-  "description": "An Extension.js example.",
+  "name": "Xeon Agent",
+  "description": "Control browser with Xeon Agent",
   "icons": {
     "48": "images/extension_48.png"
   },
@@ -14,17 +12,15 @@
     },
     "default_title": "Open Side Panel"
   },
-  "firefox:browser_action": {
-    "default_icon": {
-      "48": "images/extension_48.png"
-    },
-    "default_title": "Open Side Panel"
-  },
   "chromium:side_panel": {
     "default_path": "sidebar/index.html",
-    "default_title": "Side Panel Content"
+    "default_title": "Xeon Agent"
   },
   "chromium:permissions": [
+    "storage",
+    "activeTab",
+    "debugger",
+    "tabs",
     "sidePanel"
   ],
   "background": {
