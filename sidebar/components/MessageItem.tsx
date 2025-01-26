@@ -1,5 +1,5 @@
 import { MessageItemProps } from "../types";
-import { PencilLine, MousePointerClick } from "lucide-react";
+import { PencilLine, MousePointerClick, Check, XCircle } from "lucide-react";
 import { ActionType } from "../utils/ActionOperator";
 
 export function MessageItem({ message }: MessageItemProps) {
@@ -32,8 +32,16 @@ export function MessageItem({ message }: MessageItemProps) {
             <div className="mt-2 pt-2 border-t border-secondary-foreground/20">
               <div className="flex items-center text-xs text-muted-foreground">
                 {getActionIcon(message.snapshot.action.type)}
-                {message.snapshot.action.description && (
-                  <span>{message.snapshot.action.description}</span>
+                <div className="flex-1">
+                  {message.snapshot.action.description && (
+                    <span>{message.snapshot.action.description}</span>
+                  )}
+                </div>
+                {/* Success/Failure icon */}
+                {typeof (window as any).lastActionSuccess === 'boolean' && (
+                  (window as any).lastActionSuccess ? 
+                    <Check className="w-4 h-4 text-green-500 ml-2" /> :
+                    <XCircle className="w-4 h-4 text-red-500 ml-2" />
                 )}
               </div>
             </div>
