@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { SendHorizontalIcon, Square, Plus, Settings } from "lucide-react"
+import { SendHorizontalIcon, Square, Plus, Settings, MessageSquareText } from "lucide-react"
 import { useState } from "react"
 import './styles.css'
 
@@ -49,6 +49,7 @@ export default function SidebarApp() {
         >
           <Plus size={20} />
         </Button>
+        <MessageSquareText size={20} className="text-muted-foreground mx-1" />
         <Button 
           variant="ghost" 
           size="icon"
