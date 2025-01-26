@@ -1,6 +1,6 @@
 import { Button } from "@/components/ui/button"
 import { Input } from "@/components/ui/input"
-import { SendHorizontalIcon } from "lucide-react"
+import { SendHorizontalIcon, Square } from "lucide-react"
 import { useState } from "react"
 import './styles.css'
 
@@ -12,11 +12,14 @@ interface Message {
 export default function SidebarApp() {
   const [messages, setMessages] = useState<Message[]>([])
   const [inputValue, setInputValue] = useState("")
+  const [isSending, setIsSending] = useState(false)
 
   const handleSubmit = (e: React.FormEvent) => {
     e.preventDefault()
     if (!inputValue.trim()) return
 
+    setIsSending(true)
+    
     const newMessage: Message = {
       content: inputValue,
       isUser: true
@@ -24,6 +27,11 @@ export default function SidebarApp() {
 
     setMessages([...messages, newMessage])
     setInputValue("")
+
+    // Reset l'icône après 1 seconde
+    setTimeout(() => {
+      setIsSending(false)
+    }, 1000)
   }
 
   return (
@@ -57,7 +65,13 @@ export default function SidebarApp() {
               onChange={(e) => setInputValue(e.target.value)}
             />
           </div>
-          <Button type="submit" size="icon"><SendHorizontalIcon /></Button>
+          <Button type="submit" size="icon">
+            {isSending ? (
+              <Square className="text-red-500" />
+            ) : (
+              <SendHorizontalIcon />
+            )}
+          </Button>
         </div>
       </form>
     </div>
