@@ -1,6 +1,19 @@
 import { MessageItemProps } from "../types";
+import { PencilLine, MousePointerClick } from "lucide-react";
+import { ActionType } from "../utils/ActionOperator";
 
 export function MessageItem({ message }: MessageItemProps) {
+  const getActionIcon = (type: string) => {
+    switch (type) {
+      case ActionType.INPUT:
+        return <PencilLine className="w-5 h-5 inline-block mr-2" />;
+      case ActionType.CLICK:
+        return <MousePointerClick className="w-5 h-5 inline-block mr-2" />;
+      default:
+        return null;
+    }
+  };
+
   return (
     <div className="flex flex-col gap-2 mb-4">
       <div className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
@@ -17,14 +30,12 @@ export function MessageItem({ message }: MessageItemProps) {
           {/* Action details in same bubble for assistant messages */}
           {!message.isUser && message.snapshot?.action && (
             <div className="mt-2 pt-2 border-t border-secondary-foreground/20">
-              <p className="text-xs text-muted-foreground">
-                Action: {message.snapshot.action.type}
-              </p>
-              {message.snapshot.action.description && (
-                <p className="text-xs text-muted-foreground">
-                  Description: {message.snapshot.action.description}
-                </p>
-              )}
+              <div className="flex items-center text-xs text-muted-foreground">
+                {getActionIcon(message.snapshot.action.type)}
+                {message.snapshot.action.description && (
+                  <span>{message.snapshot.action.description}</span>
+                )}
+              </div>
             </div>
           )}
         </div>
