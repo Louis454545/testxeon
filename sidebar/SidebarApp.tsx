@@ -78,12 +78,24 @@ export default function SidebarApp() {
     setIsSending(true)
     
     try {
-      const messageWithSnapshot = await sendMessage(content)
+      // Convert messages to conversation history format with roles
+      const conversationHistory = messages.map(msg => ({
+        role: msg.isUser ? "human" : "assistant",
+        content: msg.content
+      }));
+
+      // Send message with conversation history
+      const messageWithResponse = await sendMessage(
+        content,
+        conversationHistory.length === 0 ? content : undefined, // Use first message as task
+        conversationHistory
+      );
+
       const newMessage: Message = {
         content,
         isUser: true,
         timestamp: new Date(),
-        snapshot: messageWithSnapshot.snapshot
+        snapshot: messageWithResponse.snapshot
       }
 
       const updatedMessages = [...messages, newMessage]
@@ -97,12 +109,12 @@ export default function SidebarApp() {
       }
 
     } catch (error) {
-      console.error('Error getting snapshot:', error)
-      // Create message without snapshot if there's an error
+      console.error('Error processing message:', error)
       const newMessage: Message = {
         content,
         isUser: true,
-        timestamp: new Date()
+        timestamp: new Date(),
+        snapshot: { error: 'Failed to process message' }
       }
       const updatedMessages = [...messages, newMessage]
       setMessages(updatedMessages)

@@ -24,7 +24,9 @@ export function MessageItem({ message }: MessageItemProps) {
             }`}
           >
             <pre className="whitespace-pre-wrap text-xs overflow-auto max-h-[200px]">
-              {JSON.stringify(message.snapshot, null, 2)}
+              {typeof message.snapshot === 'string'
+                ? message.snapshot
+                : JSON.stringify(message.snapshot, null, 2)}
             </pre>
           </div>
         </div>

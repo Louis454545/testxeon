@@ -1,8 +1,11 @@
+export type Role = "human" | "assistant";
+
 export interface Message {
   content: string;
   isUser: boolean;
   timestamp?: Date;
   snapshot?: any;
+  role?: Role; // Optional since it's computed from isUser
 }
 
 export interface Conversation {
