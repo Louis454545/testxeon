@@ -3,7 +3,7 @@ import { Header } from "./components/Header"
 import { MessageList } from "./components/MessageList"
 import { MessageInput } from "./components/MessageInput"
 import { ConversationsPage } from "./components/ConversationsPage"
-import { Message, Conversation } from "./types"
+import { Message, Conversation, createMessage } from "./types"
 import { sendMessage } from "./utils/messenger"
 import './styles.css'
 
@@ -78,54 +78,40 @@ export default function SidebarApp() {
     setIsSending(true)
     
     try {
-      // Convert messages to conversation history format with roles
-      const conversationHistory = messages.map(msg => ({
-        role: msg.isUser ? "human" : "assistant",
-        content: msg.content
-      }));
-
-      // Send message with conversation history
+      // Send message with previous messages as history
       const messageWithResponse = await sendMessage(
         content,
-        conversationHistory.length === 0 ? content : undefined, // Use first message as task
-        conversationHistory
+        messages.length === 0 ? content : undefined, // First message is the task
+        messages // Pass existing messages as history
       );
 
-      const newMessage: Message = {
-        content,
-        isUser: true,
-        timestamp: new Date(),
-        snapshot: messageWithResponse.snapshot
-      }
-
-      const updatedMessages = [...messages, newMessage]
-      setMessages(updatedMessages)
+      const updatedMessages = [...messages, messageWithResponse];
+      setMessages(updatedMessages);
 
       // Update or create conversation
       if (currentConversationId) {
-        updateConversation(currentConversationId, updatedMessages)
+        updateConversation(currentConversationId, updatedMessages);
       } else {
-        createNewConversation(updatedMessages)
+        createNewConversation(updatedMessages);
       }
 
     } catch (error) {
-      console.error('Error processing message:', error)
-      const newMessage: Message = {
-        content,
-        isUser: true,
-        timestamp: new Date(),
-        snapshot: { error: 'Failed to process message' }
-      }
-      const updatedMessages = [...messages, newMessage]
-      setMessages(updatedMessages)
+      console.error('Error processing message:', error);
+      const errorMessage = createMessage(content, true, {
+        message: 'Failed to process message',
+        error: error instanceof Error ? error.message : 'Unknown error'
+      });
+      
+      const updatedMessages = [...messages, errorMessage];
+      setMessages(updatedMessages);
 
       if (currentConversationId) {
-        updateConversation(currentConversationId, updatedMessages)
+        updateConversation(currentConversationId, updatedMessages);
       } else {
-        createNewConversation(updatedMessages)
+        createNewConversation(updatedMessages);
       }
     } finally {
-      setIsSending(false)
+      setIsSending(false);
     }
   }
 
