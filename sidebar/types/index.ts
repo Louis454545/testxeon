@@ -2,6 +2,7 @@ export interface Message {
   content: string;
   isUser: boolean;
   timestamp?: Date;
+  snapshot?: any;
 }
 
 export interface Conversation {
@@ -17,7 +18,7 @@ export interface MessageListProps {
 }
 
 export interface MessageInputProps {
-  onSubmit: (message: string) => void;
+  onSubmit: (message: string, snapshot?: any) => void;
   isSending: boolean;
 }
 

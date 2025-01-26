@@ -4,6 +4,7 @@ import { MessageList } from "./components/MessageList"
 import { MessageInput } from "./components/MessageInput"
 import { ConversationsPage } from "./components/ConversationsPage"
 import { Message, Conversation } from "./types"
+import { sendMessage } from "./utils/messenger"
 import './styles.css'
 
 type View = 'chat' | 'conversations';
@@ -73,28 +74,47 @@ export default function SidebarApp() {
     )
   }
 
-  const handleSubmitMessage = (content: string) => {
+  const handleSubmitMessage = async (content: string) => {
     setIsSending(true)
     
-    const newMessage: Message = {
-      content,
-      isUser: true,
-      timestamp: new Date()
-    }
+    try {
+      const messageWithSnapshot = await sendMessage(content)
+      const newMessage: Message = {
+        content,
+        isUser: true,
+        timestamp: new Date(),
+        snapshot: messageWithSnapshot.snapshot
+      }
 
-    const updatedMessages = [...messages, newMessage]
-    setMessages(updatedMessages)
+      const updatedMessages = [...messages, newMessage]
+      setMessages(updatedMessages)
 
-    // Update or create conversation
-    if (currentConversationId) {
-      updateConversation(currentConversationId, updatedMessages)
-    } else {
-      createNewConversation(updatedMessages)
-    }
+      // Update or create conversation
+      if (currentConversationId) {
+        updateConversation(currentConversationId, updatedMessages)
+      } else {
+        createNewConversation(updatedMessages)
+      }
 
-    setTimeout(() => {
+    } catch (error) {
+      console.error('Error getting snapshot:', error)
+      // Create message without snapshot if there's an error
+      const newMessage: Message = {
+        content,
+        isUser: true,
+        timestamp: new Date()
+      }
+      const updatedMessages = [...messages, newMessage]
+      setMessages(updatedMessages)
+
+      if (currentConversationId) {
+        updateConversation(currentConversationId, updatedMessages)
+      } else {
+        createNewConversation(updatedMessages)
+      }
+    } finally {
       setIsSending(false)
-    }, 1000)
+    }
   }
 
   const handleSelectConversation = (id: string) => {
