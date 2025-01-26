@@ -4,8 +4,6 @@ import { nodeMap } from './pageCapture';
 export enum ActionType {
   CLICK = 'click',
   INPUT = 'input',
-  SCROLL = 'scroll',
-  HOVER = 'hover',
 }
 
 interface ActionBase {
@@ -19,20 +17,11 @@ interface ClickAction extends ActionBase {
 
 interface InputAction extends ActionBase {
   type: ActionType.INPUT;
-  value: string;
+  text: string;
+  description?: string;
 }
 
-interface ScrollAction extends ActionBase {
-  type: ActionType.SCROLL;
-  direction: 'up' | 'down';
-  amount: number;
-}
-
-interface HoverAction extends ActionBase {
-  type: ActionType.HOVER;
-}
-
-export type Action = ClickAction | InputAction | ScrollAction | HoverAction;
+export type Action = ClickAction | InputAction;
 
 export class ActionOperator {
   private page: Page;
@@ -45,37 +34,38 @@ export class ActionOperator {
     try {
       switch (action.type) {
         case ActionType.CLICK: {
-          // Get the node from nodeMap
           const node = nodeMap.get(String(action.target));
           if (!node) {
             console.error(`Node not found for target: ${action.target}`);
             return false;
           }
 
-          // Get element handle and execute click
           const elementHandle = await node.elementHandle();
           if (!elementHandle) {
             console.error('Failed to get element handle');
             return false;
           }
 
-          // Execute click and clean up
           await elementHandle.click();
-          await elementHandle.dispose();
           return true;
         }
 
-        case ActionType.INPUT:
-          // TODO: Implement input logic
-          return false;
+        case ActionType.INPUT: {
+          const inputnode = nodeMap.get(String(action.target));
+          if (!inputnode) {
+            console.error(`Node not found for target: ${action.target}`);
+            return false;
+          }
 
-        case ActionType.SCROLL:
-          // TODO: Implement scroll logic
-          return false;
+          const elementHandle = await inputnode.elementHandle();
+          if (!elementHandle) {
+            console.error('Failed to get element handle');
+            return false;
+          }
 
-        case ActionType.HOVER:
-          // TODO: Implement hover logic
-          return false;
+          await elementHandle.type((action as InputAction).text);
+          return true;
+        }
 
         default:
           console.error('Unsupported action type');
