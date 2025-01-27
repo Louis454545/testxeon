@@ -99,7 +99,7 @@ export class MessageHandler {
         }
       }
       
-      return createMessage(content, false, apiResponse);
+      return createMessage(apiResponse.message, false, apiResponse);
     } catch (error) {
       console.error('Error in processMessage:', error);
       
