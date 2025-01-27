@@ -49,7 +49,7 @@ export async function sendToApi(
     const conversationHistory = convertToApiMessages(messages);
 
     const payload: ApiPayload = {
-      html_code: JSON.stringify(snapshot),
+      context: JSON.stringify(snapshot),
       current_url: activeTab.url,
       task: messages.length === 0 ? task : undefined,
       image: screenshot,

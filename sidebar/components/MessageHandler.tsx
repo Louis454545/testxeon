@@ -1,5 +1,5 @@
-import { Message, createMessage } from '../types';
-import { ApiPayload, ApiResponse, Role, Tab } from '../types/api';
+import { Message, createMessage, getMessageRole } from '../types';
+import { ApiPayload, ApiResponse, Role, Tab, ConversationMessage } from '../types/api';
 import { DebuggerConnectionService } from '../utils/debuggerConnection';
 import { PageCaptureService } from '../utils/pageCapture';
 import { ActionOperator } from '../utils/ActionOperator';
@@ -17,18 +17,24 @@ export class MessageHandler {
     }));
   }
 
-  private static convertToApiMessages(messages: Message[]): { role: Role; content: string }[] {
-    return messages.map(msg => ({
-      role: msg.isUser ? 'user' as Role : 'assistant' as Role,
-      content: msg.content
-    }));
+  private static convertToApiMessages(messages: Message[]): ConversationMessage[] {
+    const apiMessages = messages.map(msg => {
+      // Convert to literal strings that Python expects
+      const message = {
+        role: msg.isUser ? 'human' : 'assistant',
+        content: msg.content
+      } as ConversationMessage;
+      console.log('Converting message:', message);
+      return message;
+    });
+    console.log('Final conversation history:', apiMessages);
+    return apiMessages;
   }
 
   private static async sendToApi(
     snapshot: any,
     screenshot: string,
-    messages: Message[] = [],
-    task?: string
+    messages: Message[] = []
   ): Promise<ApiResponse> {
     try {
       const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
@@ -39,22 +45,29 @@ export class MessageHandler {
       const allTabs = await this.getAllTabs();
       const conversationHistory = this.convertToApiMessages(messages);
 
+      const formattedHistory = this.convertToApiMessages(messages);
+      console.log('Conversation history:', JSON.stringify(formattedHistory, null, 2));
+      
       const payload: ApiPayload = {
-        html_code: JSON.stringify(snapshot),
+        context: JSON.stringify(snapshot),
         current_url: activeTab.url,
-        task: messages.length === 0 ? task : undefined,
         image: screenshot,
         last_action_success: (window as any).lastActionSuccess || false,
-        conversation_history: conversationHistory,
+        conversation_history: formattedHistory,
         tabs: allTabs,
       };
+      
+      console.log('Full payload:', JSON.stringify(payload, null, 2));
 
+      const payloadString = JSON.stringify(payload, null, 2);
+      console.log('Sending payload to API:', payloadString);
+      
       const response = await fetch(this.API_ENDPOINT, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify(payload),
+        body: payloadString,
       });
 
       if (!response.ok) {
@@ -73,7 +86,6 @@ export class MessageHandler {
 
   static async getApiResponse(
     content: string,
-    task?: string,
     previousMessages: Message[] = []
   ): Promise<[ApiResponse, any, any]> {
     const connection = await DebuggerConnectionService.connect();
@@ -82,8 +94,7 @@ export class MessageHandler {
       const apiResponse = await this.sendToApi(
         pageData.accessibility,
         pageData.screenshot,
-        previousMessages,
-        task
+        previousMessages
       );
       return [apiResponse, connection.page, connection.browser];
     } catch (error) {
@@ -110,11 +121,10 @@ export class MessageHandler {
 
   static async processMessage(
     content: string,
-    task?: string,
     previousMessages: Message[] = []
   ): Promise<Message> {
     try {
-      const [apiResponse, page, browser] = await this.getApiResponse(content, task, previousMessages);
+      const [apiResponse, page, browser] = await this.getApiResponse(content, previousMessages);
       const message = createMessage(apiResponse.message, false, apiResponse);
       
       try {

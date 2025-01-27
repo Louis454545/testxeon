@@ -105,8 +105,7 @@ export default function SidebarApp() {
       // Get API response
       const [apiResponse, page, browser] = await MessageHandler.getApiResponse(
         content,
-        messages.length === 0 ? content : undefined, // First message is the task
-        messages // Pass existing messages as history
+        updatedMessages // Pass history including current user message
       );
 
       // Show API response message

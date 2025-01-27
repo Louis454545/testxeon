@@ -31,7 +31,7 @@ export interface ConversationMessage {
  */
 export interface ApiPayload {
   /** Serialized accessibility tree */
-  html_code: string;
+  context: string;
   
   /** Current page URL */
   current_url: string;
