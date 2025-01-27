@@ -71,47 +71,66 @@ export class MessageHandler {
     }
   }
 
-  static async processMessage(
+  static async getApiResponse(
     content: string,
     task?: string,
     previousMessages: Message[] = []
-  ): Promise<Message> {
-    let connection;
+  ): Promise<[ApiResponse, any, any]> {
+    const connection = await DebuggerConnectionService.connect();
     try {
-      connection = await DebuggerConnectionService.connect();
       const pageData = await PageCaptureService.capturePageData(connection.page);
-      
       const apiResponse = await this.sendToApi(
         pageData.accessibility,
         pageData.screenshot,
         previousMessages,
         task
       );
+      return [apiResponse, connection.page, connection.browser];
+    } catch (error) {
+      await DebuggerConnectionService.disconnect(connection.browser);
+      throw error;
+    }
+  }
 
-      if (apiResponse.action) {
-        const actionOperator = new ActionOperator(connection.page);
-        try {
-          const actionSuccess = await actionOperator.executeAction(apiResponse.action);
-          (window as any).lastActionSuccess = actionSuccess;
-        } catch (error) {
-          console.error('Error executing action:', error);
-          (window as any).lastActionSuccess = false;
-        }
+  static async executeAction(page: any, apiResponse: ApiResponse): Promise<boolean> {
+    if (apiResponse.action) {
+      const actionOperator = new ActionOperator(page);
+      try {
+        const actionSuccess = await actionOperator.executeAction(apiResponse.action);
+        (window as any).lastActionSuccess = actionSuccess;
+        return actionSuccess;
+      } catch (error) {
+        console.error('Error executing action:', error);
+        (window as any).lastActionSuccess = false;
+        return false;
+      }
+    }
+    return true;
+  }
+
+  static async processMessage(
+    content: string,
+    task?: string,
+    previousMessages: Message[] = []
+  ): Promise<Message> {
+    try {
+      const [apiResponse, page, browser] = await this.getApiResponse(content, task, previousMessages);
+      const message = createMessage(apiResponse.message, false, apiResponse);
+      
+      try {
+        await this.executeAction(page, apiResponse);
+      } finally {
+        await DebuggerConnectionService.disconnect(browser);
       }
       
-      return createMessage(apiResponse.message, false, apiResponse);
+      return message;
     } catch (error) {
       console.error('Error in processMessage:', error);
-      
       const errorResponse: ApiResponse = {
         message: 'Failed to process message',
         error: error instanceof Error ? error.message : 'Unknown error'
       };
       return createMessage(content, false, errorResponse);
-    } finally {
-      if (connection) {
-        await DebuggerConnectionService.disconnect(connection.browser);
-      }
     }
   }
 }

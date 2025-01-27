@@ -4,7 +4,8 @@ import { MessageList } from "./components/MessageList"
 import { MessageInput } from "./components/MessageInput"
 import { ConversationsPage } from "./components/ConversationsPage"
 import { Message, Conversation, createMessage } from "./types"
-import { MessageService } from "./utils/messageService"
+import { MessageHandler } from "./components/MessageHandler"
+import { DebuggerConnectionService } from "./utils/debuggerConnection"
 import './styles.css'
 
 type View = 'chat' | 'conversations';
@@ -90,20 +91,38 @@ export default function SidebarApp() {
     }
     
     try {
-      // Send message to API in background
-      const messageWithResponse = await MessageService.sendMessage(
+      // Show thinking message first
+      const thinkingMessage = createMessage("Thinking...", false);
+      const messagesWithThinking = [...updatedMessages, thinkingMessage];
+      setMessages(messagesWithThinking);
+      
+      // Update conversation with thinking state
+      if (currentConversationId) {
+        updateConversation(currentConversationId, messagesWithThinking);
+      }
+
+      // Get API response
+      const [apiResponse, page, browser] = await MessageHandler.getApiResponse(
         content,
         messages.length === 0 ? content : undefined, // First message is the task
         messages // Pass existing messages as history
       );
 
-      // Update message list with API response by appending it
-      const finalMessages = [...updatedMessages, messageWithResponse];
-      setMessages(finalMessages);
-
-      // Update conversation with final messages
+      // Show API response message
+      const apiMessage = createMessage(apiResponse.message, false, apiResponse);
+      const messagesWithResponse = [...updatedMessages, apiMessage];
+      setMessages(messagesWithResponse);
+      
+      // Update conversation with API response
       if (currentConversationId) {
-        updateConversation(currentConversationId, finalMessages);
+        updateConversation(currentConversationId, messagesWithResponse);
+      }
+
+      // Execute action after showing both messages
+      try {
+        await MessageHandler.executeAction(page, apiResponse);
+      } finally {
+        await DebuggerConnectionService.disconnect(browser);
       }
     } catch (error) {
       console.error('Error processing message:', error);
