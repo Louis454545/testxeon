@@ -6,6 +6,7 @@ import { ConversationsPage } from "./components/ConversationsPage"
 import { Message, Conversation, createMessage } from "./types"
 import { MessageHandler } from "./components/MessageHandler"
 import { DebuggerConnectionService } from "./utils/debuggerConnection"
+import { createThinkingMessage } from "./components/ThinkingMessage"
 import './styles.css'
 
 type View = 'chat' | 'conversations';
@@ -92,7 +93,7 @@ export default function SidebarApp() {
     
     try {
       // Show thinking message first
-      const thinkingMessage = createMessage("Thinking...", false);
+      const thinkingMessage = createThinkingMessage();
       const messagesWithThinking = [...updatedMessages, thinkingMessage];
       setMessages(messagesWithThinking);
       
