@@ -97,10 +97,8 @@ export default function SidebarApp() {
         messages // Pass existing messages as history
       );
 
-      // Update message list with API response
-      const finalMessages = updatedMessages.map(msg =>
-        msg === userMessage ? messageWithResponse : msg
-      );
+      // Update message list with API response by appending it
+      const finalMessages = [...updatedMessages, messageWithResponse];
       setMessages(finalMessages);
 
       // Update conversation with final messages
