@@ -7,6 +7,7 @@ import { Message, Conversation, createMessage } from "./types"
 import { MessageHandler } from "./components/MessageHandler"
 import { DebuggerConnectionService } from "./utils/debuggerConnection"
 import { createThinkingMessage } from "./components/ThinkingMessage"
+import { PageCaptureService } from "./utils/pageCapture"
 import './styles.css'
 
 type View = 'chat' | 'conversations';
@@ -121,6 +122,50 @@ export default function SidebarApp() {
       // Execute action after showing both messages
       try {
         await MessageHandler.executeAction(page, apiResponse);
+        
+        // Keep processing followup responses until no more actions
+        let currentMessages = messagesWithResponse;
+        let lastResponse = apiResponse;
+        
+        while (lastResponse.action) {
+          // Show thinking message for followup
+          const followupThinkingMessage = createThinkingMessage();
+          const messagesWithFollowupThinking = [...currentMessages, followupThinkingMessage];
+          setMessages(messagesWithFollowupThinking);
+          
+          // Update conversation with thinking state
+          if (currentConversationId) {
+            updateConversation(currentConversationId, messagesWithFollowupThinking);
+          }
+
+          // Get new page data after action execution
+          const pageData = await PageCaptureService.capturePageData(page);
+          
+          // Send another request with updated context
+          const followupResponse = await MessageHandler.sendApiRequest(
+            pageData.accessibility,
+            pageData.screenshot,
+            [...currentMessages]
+          );
+          
+          // Create and add the followup message
+          const followupMessage = createMessage(followupResponse.message, false, followupResponse);
+          currentMessages = [...currentMessages, followupMessage];
+          setMessages(currentMessages);
+          
+          // Update conversation if needed
+          if (currentConversationId) {
+            updateConversation(currentConversationId, currentMessages);
+          }
+
+          // Execute any actions from the followup response
+          if (followupResponse.action) {
+            await MessageHandler.executeAction(page, followupResponse);
+          }
+
+          lastResponse = followupResponse;
+        }
+        
       } finally {
         await DebuggerConnectionService.disconnect(browser);
       }

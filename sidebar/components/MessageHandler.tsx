@@ -31,7 +31,7 @@ export class MessageHandler {
     return apiMessages;
   }
 
-  private static async sendToApi(
+  public static async sendApiRequest(
     snapshot: any,
     screenshot: string,
     messages: Message[] = []
@@ -91,7 +91,7 @@ export class MessageHandler {
     const connection = await DebuggerConnectionService.connect();
     try {
       const pageData = await PageCaptureService.capturePageData(connection.page);
-      const apiResponse = await this.sendToApi(
+      const apiResponse = await this.sendApiRequest(
         pageData.accessibility,
         pageData.screenshot,
         previousMessages
