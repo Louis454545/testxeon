@@ -4,6 +4,7 @@ import { nodeMap } from './pageCapture';
 export enum ActionType {
   CLICK = 'click',
   INPUT = 'input',
+  ASK = 'ask',
 }
 
 interface ActionBase {
@@ -21,7 +22,12 @@ interface InputAction extends ActionBase {
   text: string;
 }
 
-export type Action = ClickAction | InputAction;
+interface AskAction extends ActionBase {
+  type: ActionType.ASK;
+  text: string; // The question or clarification needed
+}
+
+export type Action = ClickAction | InputAction | AskAction;
 
 export class ActionOperator {
   private page: Page;
@@ -66,6 +72,11 @@ export class ActionOperator {
           await elementHandle.type((action as InputAction).text);
           return true;
         }
+
+        case ActionType.ASK:
+          // For ASK type, we just return false to indicate processing should stop
+          // The content and description will be shown to the user in the UI
+          return false;
 
         default:
           console.error('Unsupported action type');

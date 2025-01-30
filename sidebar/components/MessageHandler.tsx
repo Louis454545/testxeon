@@ -78,7 +78,7 @@ export class MessageHandler {
     } catch (error) {
       console.error('Error sending data to API:', error);
       return {
-        message: 'Failed to process request',
+        content: 'Failed to process request',
         error: error instanceof Error ? error.message : 'Unknown error'
       };
     }
@@ -125,7 +125,10 @@ export class MessageHandler {
   ): Promise<Message> {
     try {
       const [apiResponse, page, browser] = await this.getApiResponse(content, previousMessages);
-      const message = createMessage(apiResponse.message, false, apiResponse);
+      const messageContent = apiResponse.content || 
+        (apiResponse.action ? `Action: ${apiResponse.action.description || 'Executing action...'}` : 'Processing...');
+      
+      const message = createMessage(messageContent, false, apiResponse);
       
       try {
         await this.executeAction(page, apiResponse);
@@ -137,7 +140,7 @@ export class MessageHandler {
     } catch (error) {
       console.error('Error in processMessage:', error);
       const errorResponse: ApiResponse = {
-        message: 'Failed to process message',
+        content: 'Failed to process message',
         error: error instanceof Error ? error.message : 'Unknown error'
       };
       return createMessage(content, false, errorResponse);

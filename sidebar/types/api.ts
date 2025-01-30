@@ -56,8 +56,8 @@ export interface ApiPayload {
  * Response from the API server
  */
 export interface ApiResponse {
-  /** Server's response message */
-  message: string;
+  /** Server's response message (optional) */
+  content?: string;
   
   /** Any additional data from the server */
   data?: unknown;

@@ -21,25 +21,22 @@ export default function SidebarApp() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
 
   const handleNewConversation = () => {
-    // Just clear messages without creating a conversation
     setMessages([])
     setCurrentConversationId(null)
     setCurrentView('chat')
   }
 
   const handleViewConversations = () => {
-    // Save current conversation only if it has messages
     if (currentConversationId && messages.length > 0) {
       updateConversation(currentConversationId, messages)
     } else if (!currentConversationId && messages.length > 0) {
-      // Create new conversation if there are messages but no ID
       createNewConversation(messages)
     }
     setCurrentView('conversations')
   }
 
   const createNewConversation = (msgs: Message[]) => {
-    if (msgs.length === 0) return // Don't create empty conversations
+    if (msgs.length === 0) return
     
     const newId = Date.now().toString()
     const newConversation: Conversation = {
@@ -55,7 +52,6 @@ export default function SidebarApp() {
 
   const updateConversation = (id: string, newMessages: Message[]) => {
     if (newMessages.length === 0) {
-      // Remove conversation if it becomes empty
       setConversations(prevConversations => 
         prevConversations.filter(conv => conv.id !== id)
       )
@@ -85,7 +81,6 @@ export default function SidebarApp() {
     const updatedMessages = [...messages, userMessage];
     setMessages(updatedMessages);
     
-    // Update or create conversation
     if (currentConversationId) {
       updateConversation(currentConversationId, updatedMessages);
     } else {
@@ -93,12 +88,11 @@ export default function SidebarApp() {
     }
     
     try {
-      // Show thinking message first
+      // Show thinking message
       const thinkingMessage = createThinkingMessage();
       const messagesWithThinking = [...updatedMessages, thinkingMessage];
       setMessages(messagesWithThinking);
       
-      // Update conversation with thinking state
       if (currentConversationId) {
         updateConversation(currentConversationId, messagesWithThinking);
       }
@@ -106,74 +100,45 @@ export default function SidebarApp() {
       // Get API response
       const [apiResponse, page, browser] = await MessageHandler.getApiResponse(
         content,
-        updatedMessages // Pass history including current user message
+        updatedMessages
       );
 
-      // Show API response message
-      const apiMessage = createMessage(apiResponse.message, false, apiResponse);
-      const messagesWithResponse = [...updatedMessages, apiMessage];
-      setMessages(messagesWithResponse);
-      
-      // Update conversation with API response
-      if (currentConversationId) {
-        updateConversation(currentConversationId, messagesWithResponse);
-      }
-
-      // Execute action after showing both messages
       try {
-        await MessageHandler.executeAction(page, apiResponse);
-        
-        // Keep processing followup responses until no more actions
-        let currentMessages = messagesWithResponse;
-        let lastResponse = apiResponse;
-        
-        while (lastResponse.action) {
-          // Show thinking message for followup
-          const followupThinkingMessage = createThinkingMessage();
-          const messagesWithFollowupThinking = [...currentMessages, followupThinkingMessage];
-          setMessages(messagesWithFollowupThinking);
+        // Create message with the API response content or default message
+        const initialContent = apiResponse.content || "Executing action...";
+
+        // Execute action if present and stop processing
+        if (apiResponse.action) {
+          const actionSuccess = await MessageHandler.executeAction(page, apiResponse);
+          window.lastActionSuccess = actionSuccess;
+
+          // Create final message with action result
+          const messageWithAction = createMessage(initialContent, false, apiResponse);
+          const finalMessages = [...updatedMessages, messageWithAction];
+          setMessages(finalMessages);
           
-          // Update conversation with thinking state
           if (currentConversationId) {
-            updateConversation(currentConversationId, messagesWithFollowupThinking);
+            updateConversation(currentConversationId, finalMessages);
           }
-
-          // Get new page data after action execution
-          const pageData = await PageCaptureService.capturePageData(page);
-          
-          // Send another request with updated context
-          const followupResponse = await MessageHandler.sendApiRequest(
-            pageData.accessibility,
-            pageData.screenshot,
-            [...currentMessages]
-          );
-          
-          // Create and add the followup message
-          const followupMessage = createMessage(followupResponse.message, false, followupResponse);
-          currentMessages = [...currentMessages, followupMessage];
-          setMessages(currentMessages);
-          
-          // Update conversation if needed
-          if (currentConversationId) {
-            updateConversation(currentConversationId, currentMessages);
-          }
-
-          // Execute any actions from the followup response
-          if (followupResponse.action) {
-            await MessageHandler.executeAction(page, followupResponse);
-          }
-
-          lastResponse = followupResponse;
+          return; // Stop here after executing any action
         }
+
+        // If no action, just show the message
+        const finalMessage = createMessage(initialContent, false, apiResponse);
+        const finalMessages = [...updatedMessages, finalMessage];
+        setMessages(finalMessages);
         
+        if (currentConversationId) {
+          updateConversation(currentConversationId, finalMessages);
+        }
+
       } finally {
         await DebuggerConnectionService.disconnect(browser);
       }
     } catch (error) {
       console.error('Error processing message:', error);
-      // Update the user message with error state
       const errorMessage = createMessage(content, true, {
-        message: 'Failed to process message',
+        content: error instanceof Error ? error.message : 'Unknown error',
         error: error instanceof Error ? error.message : 'Unknown error'
       });
       
@@ -204,7 +169,6 @@ export default function SidebarApp() {
       prevConversations.filter(conv => conv.id !== id)
     )
 
-    // If we're deleting the current conversation, clear the current state
     if (id === currentConversationId) {
       setMessages([])
       setCurrentConversationId(null)

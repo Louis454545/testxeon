@@ -1,53 +1,79 @@
-import { MessageItemProps } from "../types";
-import { PencilLine, MousePointerClick, Check, XCircle } from "lucide-react";
-import { ActionType } from "../utils/ActionOperator";
-import { ThinkingMessage } from "./ThinkingMessage";
+import { Message } from "../types";
+import { ActionBox } from "./ActionBox";
+import { cn } from "../../lib/utils";
+import { ApiResponse } from "../types/api";
+import { Action } from "../utils/ActionOperator";
+
+interface MessageItemProps {
+  message: Message;
+}
+
+interface ActionWithStatus {
+  action: Action;  // Changed from ApiResponse['action'] to Action
+  index: number;
+  isLast: boolean;
+}
 
 export function MessageItem({ message }: MessageItemProps) {
-  const getActionIcon = (type: string): React.ReactNode => {
-    switch (type) {
-      case ActionType.INPUT:
-        return <PencilLine className="w-5 h-5 inline-block mr-2" />;
-      case ActionType.CLICK:
-        return <MousePointerClick className="w-5 h-5 inline-block mr-2" />;
-      default:
-        return null;
+  const hasAction = message.snapshot?.action !== undefined;
+  const hasContent = message.content?.trim().length > 0;
+
+  // Get all actions from the message history
+  const getActionHistory = (): ActionWithStatus[] => {
+    const actions: ActionWithStatus[] = [];
+    if (message.snapshot?.action) {  // Type guard to ensure action is defined
+      actions.push({
+        action: message.snapshot.action,
+        index: 0,
+        isLast: true
+      });
     }
+    return actions;
   };
 
-  return (
-    <div className="flex flex-col gap-2 mb-4">
-      <div className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
-        {!message.isUser && message.content === "Thinking..." ? (
-          <ThinkingMessage />
-        ) : (
-          <div
-            className={`rounded-lg px-4 py-2 max-w-[80%] ${
-              message.isUser
-                ? 'bg-secondary text-secondary-foreground'
-                : 'bg-secondary/50 text-secondary-foreground'
-            }`}
-          >
-            {/* Message content */}
-            <p className="mb-1">{message.content}</p>
+  const actions = getActionHistory();
 
-            {/* Action details in same bubble for assistant messages */}
-            {!message.isUser && message.snapshot?.action && (
-              <div className="mt-2 pt-2 border-t border-secondary-foreground/20">
-                <div className="flex items-center text-xs text-muted-foreground">
-                  {getActionIcon(message.snapshot.action.type)}
-                  <div className="flex-1">
-                    {message.snapshot.action.description && (
-                      <span>{message.snapshot.action.description}</span>
-                    )}
-                  </div>
-                  {/* Success/Failure icon */}
-                  {typeof (window as any).lastActionSuccess === 'boolean' && (
-                    (window as any).lastActionSuccess ? 
-                      <Check className="w-4 h-4 text-green-500 ml-2" /> :
-                      <XCircle className="w-4 h-4 text-red-500 ml-2" />
-                  )}
-                </div>
+  return (
+    <div
+      className={cn(
+        "flex flex-col px-4 py-2",
+        message.isUser ? "items-end" : "items-start"
+      )}
+    >
+      {/* Message bubble */}
+      <div
+        className={cn(
+          "rounded-lg px-3 py-2 max-w-[85%] break-words",
+          message.isUser
+            ? "bg-primary text-primary-foreground"
+            : "bg-muted text-foreground"
+        )}
+      >
+        {/* Content section (if exists and not an error) */}
+        {hasContent && !message.snapshot?.error && (
+          <div className="mb-2 whitespace-pre-wrap">{message.content}</div>
+        )}
+
+        {/* Actions section */}
+        {actions.length > 0 && (
+          <div className="space-y-2 mt-2">
+            {actions.map((actionItem, idx) => (
+              <ActionBox
+                key={idx}
+                action={actionItem.action}
+                success={window.lastActionSuccess}
+              />
+            ))}
+          </div>
+        )}
+
+        {/* Error section */}
+        {message.snapshot?.error && (
+          <div className="text-destructive whitespace-pre-wrap">
+            {message.content}
+            {message.snapshot.error && (
+              <div className="mt-1 text-sm opacity-80">
+                Error: {message.snapshot.error}
               </div>
             )}
           </div>
