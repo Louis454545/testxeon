@@ -121,34 +121,34 @@ export default function SidebarApp() {
         await MessageHandler.executeAction(page, apiResponse);
         
         // Keep processing followup responses until no more actions
-        let currentMessages = messagesWithResponse;
         let lastResponse = apiResponse;
         
         while (lastResponse.action) {
           // Show thinking message for followup
           const followupThinkingMessage = createThinkingMessage();
-          const messagesWithFollowupThinking = [...currentMessages, followupThinkingMessage];
-          setMessages(messagesWithFollowupThinking);
+          setMessages(prev => [...prev, followupThinkingMessage]);
           
           // Update conversation with thinking state
           if (currentConversationId) {
-            updateConversation(currentConversationId, messagesWithFollowupThinking);
+            const currentMessages = [...messages, followupThinkingMessage];
+            updateConversation(currentConversationId, currentMessages);
           }
 
-          // Get new page data after action execution
-          const pageData = await PageCaptureService.capturePageData(page);
-          
-          // Send another request with updated context
-          const [followupResponse] = await MessageHandler.getApiResponse();
+          // Send another request with updated context using the same page
+          const [followupResponse] = await MessageHandler.getApiResponse(undefined, page);
           
           // Create and add the followup message
           const followupMessage = createMessage(followupResponse.content, false, followupResponse);
-          currentMessages = [...currentMessages, followupMessage];
-          setMessages(currentMessages);
+          setMessages(prev => {
+            // Remove thinking message and add followup message
+            const withoutThinking = prev.filter(m => m !== followupThinkingMessage);
+            return [...withoutThinking, followupMessage];
+          });
           
           // Update conversation if needed
           if (currentConversationId) {
-            updateConversation(currentConversationId, currentMessages);
+            const currentMessages = messages.filter(m => m !== followupThinkingMessage);
+            updateConversation(currentConversationId, [...currentMessages, followupMessage]);
           }
 
           // Execute any actions from the followup response
@@ -158,7 +158,6 @@ export default function SidebarApp() {
 
           lastResponse = followupResponse;
         }
-        
       } finally {
         await DebuggerConnectionService.disconnect(browser);
       }

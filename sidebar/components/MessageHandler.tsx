@@ -9,11 +9,25 @@ export class MessageHandler {
   private static currentConversationId: string | null = null;
 
   static async getApiResponse(
-    content: string | undefined = undefined
+    content: string | undefined = undefined,
+    existingPage: any = null
   ): Promise<[ApiResponse, any, any]> {
-    const connection = await DebuggerConnectionService.connect();
+    let page;
+    let browser;
+    let shouldDisconnect = false;
+    
     try {
-      const pageData = await PageCaptureService.capturePageData(connection.page);
+      if (existingPage) {
+        page = existingPage;
+        browser = null;
+      } else {
+        const connection = await DebuggerConnectionService.connect();
+        page = connection.page;
+        browser = connection.browser;
+        shouldDisconnect = true;
+      }
+
+      const pageData = await PageCaptureService.capturePageData(page);
       const apiResponse = await sendToApi(
         pageData.accessibility,
         pageData.screenshot,
@@ -24,9 +38,11 @@ export class MessageHandler {
       // Store the conversation ID for future requests
       this.currentConversationId = apiResponse.conversation_id;
       
-      return [apiResponse, connection.page, connection.browser];
+      return [apiResponse, page, browser];
     } catch (error) {
-      await DebuggerConnectionService.disconnect(connection.browser);
+      if (shouldDisconnect && browser) {
+        await DebuggerConnectionService.disconnect(browser);
+      }
       throw error;
     }
   }
