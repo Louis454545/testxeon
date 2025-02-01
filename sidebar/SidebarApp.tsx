@@ -104,13 +104,10 @@ export default function SidebarApp() {
       }
 
       // Get API response
-      const [apiResponse, page, browser] = await MessageHandler.getApiResponse(
-        content,
-        updatedMessages // Pass history including current user message
-      );
+      const [apiResponse, page, browser] = await MessageHandler.getApiResponse(content);
 
       // Show API response message
-      const apiMessage = createMessage(apiResponse.message, false, apiResponse);
+      const apiMessage = createMessage(apiResponse.content, false, apiResponse);
       const messagesWithResponse = [...updatedMessages, apiMessage];
       setMessages(messagesWithResponse);
       
@@ -142,14 +139,10 @@ export default function SidebarApp() {
           const pageData = await PageCaptureService.capturePageData(page);
           
           // Send another request with updated context
-          const followupResponse = await MessageHandler.sendApiRequest(
-            pageData.accessibility,
-            pageData.screenshot,
-            [...currentMessages]
-          );
+          const [followupResponse] = await MessageHandler.getApiResponse();
           
           // Create and add the followup message
-          const followupMessage = createMessage(followupResponse.message, false, followupResponse);
+          const followupMessage = createMessage(followupResponse.content, false, followupResponse);
           currentMessages = [...currentMessages, followupMessage];
           setMessages(currentMessages);
           
@@ -172,10 +165,7 @@ export default function SidebarApp() {
     } catch (error) {
       console.error('Error processing message:', error);
       // Update the user message with error state
-      const errorMessage = createMessage(content, true, {
-        message: 'Failed to process message',
-        error: error instanceof Error ? error.message : 'Unknown error'
-      });
+      const errorMessage = createMessage(`Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`, true);
       
       const finalMessages = updatedMessages.map(msg =>
         msg === userMessage ? errorMessage : msg

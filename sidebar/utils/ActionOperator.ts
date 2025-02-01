@@ -1,27 +1,13 @@
 import type { Page } from 'puppeteer-core/lib/types';
+import { 
+  Action, 
+  ActionName,
+  isClickAction,
+  isInputAction,
+  isGoToUrlAction,
+  isSwitchTabAction 
+} from '../types/api';
 import { nodeMap } from './pageCapture';
-
-export enum ActionType {
-  CLICK = 'click',
-  INPUT = 'input',
-}
-
-interface ActionBase {
-  type: ActionType;
-  target: string;
-  description?: string;
-}
-
-interface ClickAction extends ActionBase {
-  type: ActionType.CLICK;
-}
-
-interface InputAction extends ActionBase {
-  type: ActionType.INPUT;
-  text: string;
-}
-
-export type Action = ClickAction | InputAction;
 
 export class ActionOperator {
   private page: Page;
@@ -32,45 +18,57 @@ export class ActionOperator {
 
   async executeAction(action: Action): Promise<boolean> {
     try {
-      switch (action.type) {
-        case ActionType.CLICK: {
-          const node = nodeMap.get(String(action.target));
-          if (!node) {
-            console.error(`Node not found for target: ${action.target}`);
-            return false;
-          }
-
-          const elementHandle = await node.elementHandle();
-          if (!elementHandle) {
-            console.error('Failed to get element handle');
-            return false;
-          }
-
-          await elementHandle.click();
-          return true;
-        }
-
-        case ActionType.INPUT: {
-          const inputnode = nodeMap.get(String(action.target));
-          if (!inputnode) {
-            console.error(`Node not found for target: ${action.target}`);
-            return false;
-          }
-
-          const elementHandle = await inputnode.elementHandle();
-          if (!elementHandle) {
-            console.error('Failed to get element handle');
-            return false;
-          }
-
-          await elementHandle.type((action as InputAction).text);
-          return true;
-        }
-
-        default:
-          console.error('Unsupported action type');
+      if (isClickAction(action)) {
+        const node = nodeMap.get(String(action.args.target));
+        if (!node) {
+          console.error(`Node not found for target: ${action.args.target}`);
           return false;
+        }
+
+        const elementHandle = await node.elementHandle();
+        if (!elementHandle) {
+          console.error('Failed to get element handle');
+          return false;
+        }
+
+        await elementHandle.click();
+        return true;
       }
+
+      if (isInputAction(action)) {
+        const node = nodeMap.get(String(action.args.target));
+        if (!node) {
+          console.error(`Node not found for target: ${action.args.target}`);
+          return false;
+        }
+
+        const elementHandle = await node.elementHandle();
+        if (!elementHandle) {
+          console.error('Failed to get element handle');
+          return false;
+        }
+
+        await elementHandle.type(action.args.text);
+        return true;
+      }
+
+      if (isGoToUrlAction(action)) {
+        await this.page.goto(action.args.url);
+        return true;
+      }
+
+      if (isSwitchTabAction(action)) {
+        try {
+          await chrome.tabs.update(parseInt(action.args.tab_id), { active: true });
+          return true;
+        } catch (error) {
+          console.error('Error switching tab:', error);
+          return false;
+        }
+      }
+
+      console.error(`Unsupported action type: ${action.name}`);
+      return false;
     } catch (error) {
       console.error('Error executing action:', error);
       return false;

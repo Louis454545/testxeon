@@ -1,18 +1,48 @@
 import { MessageItemProps } from "../types";
-import { PencilLine, MousePointerClick, Check, XCircle } from "lucide-react";
-import { ActionType } from "../utils/ActionOperator";
+import { PencilLine, MousePointerClick, Globe, LayoutGrid, Check, XCircle } from "lucide-react";
+import { Action, ActionName } from "../types/api";
 import { ThinkingMessage } from "./ThinkingMessage";
 
 export function MessageItem({ message }: MessageItemProps) {
-  const getActionIcon = (type: string): React.ReactNode => {
-    switch (type) {
-      case ActionType.INPUT:
+  const getActionIcon = (name: ActionName): React.ReactNode => {
+    switch (name) {
+      case ActionName.INPUT:
         return <PencilLine className="w-5 h-5 inline-block mr-2" />;
-      case ActionType.CLICK:
+      case ActionName.CLICK:
         return <MousePointerClick className="w-5 h-5 inline-block mr-2" />;
+      case ActionName.GO_TO_URL:
+        return <Globe className="w-5 h-5 inline-block mr-2" />;
+      case ActionName.SWITCH_TAB:
+        return <LayoutGrid className="w-5 h-5 inline-block mr-2" />;
       default:
         return null;
     }
+  };
+
+  const renderAction = (action: Action, isLast: boolean) => (
+    <div className="flex items-center text-xs text-muted-foreground mb-1">
+      {getActionIcon(action.name)}
+      <div className="flex-1">
+        {action.args.description && (
+          <span>{action.args.description}</span>
+        )}
+      </div>
+      {/* Success/Failure icon */}
+      {isLast && typeof (window as any).lastActionSuccess === 'boolean' && (
+        (window as any).lastActionSuccess ? 
+          <Check className="w-4 h-4 text-green-500 ml-2" /> :
+          <XCircle className="w-4 h-4 text-red-500 ml-2" />
+      )}
+    </div>
+  );
+
+  const renderActions = (actions: Action | Action[]) => {
+    const actionArray = Array.isArray(actions) ? actions : [actions];
+    return actionArray.map((action, index) => (
+      <div key={index}>
+        {renderAction(action, index === actionArray.length - 1)}
+      </div>
+    ));
   };
 
   return (
@@ -34,20 +64,7 @@ export function MessageItem({ message }: MessageItemProps) {
             {/* Action details in same bubble for assistant messages */}
             {!message.isUser && message.snapshot?.action && (
               <div className="mt-2 pt-2 border-t border-secondary-foreground/20">
-                <div className="flex items-center text-xs text-muted-foreground">
-                  {getActionIcon(message.snapshot.action.type)}
-                  <div className="flex-1">
-                    {message.snapshot.action.description && (
-                      <span>{message.snapshot.action.description}</span>
-                    )}
-                  </div>
-                  {/* Success/Failure icon */}
-                  {typeof (window as any).lastActionSuccess === 'boolean' && (
-                    (window as any).lastActionSuccess ? 
-                      <Check className="w-4 h-4 text-green-500 ml-2" /> :
-                      <XCircle className="w-4 h-4 text-red-500 ml-2" />
-                  )}
-                </div>
+                {renderActions(message.snapshot.action)}
               </div>
             )}
           </div>

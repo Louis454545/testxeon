@@ -1,4 +1,4 @@
-import { Role, ApiResponse } from './api';
+import type { ApiResponse, Action } from './api';
 
 /**
  * Represents a message in the chat interface
@@ -14,7 +14,11 @@ export interface Message {
   timestamp: Date;
   
   /** Response data from the API */
-  snapshot?: ApiResponse;
+  snapshot?: {
+    action?: Action | Action[];
+    content?: string;
+    conversation_id?: string;
+  };
 }
 
 /**
@@ -31,13 +35,6 @@ export function createMessage(
     timestamp: new Date(),
     snapshot
   };
-}
-
-/**
- * Get the role for a message
- */
-export function getMessageRole(message: Message): Role {
-  return message.isUser ? Role.Human : Role.Assistant;
 }
 
 /**

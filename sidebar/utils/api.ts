@@ -1,20 +1,15 @@
-import { Message, getMessageRole } from '../types';
-import type { ApiPayload, ApiResponse, Role, Tab } from '../types/api';
+import type { ApiPayload, ApiResponse, Tab } from '../types/api';
 
 /**
- * Default API endpoint
+ * Default API endpoints
  */
-const API_ENDPOINT = 'http://localhost:5000/api/data';
-
-/**
- * Converts app messages to API conversation format
- */
-function convertToApiMessages(messages: Message[]): { role: Role; content: string }[] {
-  return messages.map(msg => ({
-    role: getMessageRole(msg),
-    content: msg.content
-  }));
-}
+const API_BASE = 'http://localhost:5000/api';
+const API_ENDPOINTS = {
+  message: `${API_BASE}/message`,
+  resetConversation: (id: string) => `${API_BASE}/conversations/${id}/reset`,
+  deleteConversation: (id: string) => `${API_BASE}/conversations/${id}`,
+  getConversations: `${API_BASE}/conversations`
+};
 
 /**
  * Gets a list of all tabs in the current window
@@ -22,7 +17,7 @@ function convertToApiMessages(messages: Message[]): { role: Role; content: strin
 async function getAllTabs(): Promise<Tab[]> {
   const tabs = await chrome.tabs.query({ currentWindow: true });
   return tabs.map(tab => ({
-    id: tab.id || 0,
+    id: String(tab.id || ''),
     url: tab.url || '',
     title: tab.title || '',
     active: tab.active,
@@ -35,30 +30,28 @@ async function getAllTabs(): Promise<Tab[]> {
 export async function sendToApi(
   snapshot: any,
   screenshot: string,
-  messages: Message[] = [],
-  task?: string
+  userMessage?: string,
+  conversationId: string | null = null
 ): Promise<ApiResponse> {
   try {
-    // Get current tab for URL
-    const [activeTab] = await chrome.tabs.query({ active: true, currentWindow: true });
-    if (!activeTab?.url) {
-      throw new Error('No active tab found');
-    }
-
     const allTabs = await getAllTabs();
-    const conversationHistory = convertToApiMessages(messages);
 
-    const payload: ApiPayload = {
+    // Build base payload
+    const payload: Partial<ApiPayload> = {
       context: JSON.stringify(snapshot),
-      current_url: activeTab.url,
-      task: messages.length === 0 ? task : undefined,
       image: screenshot,
       last_action_success: (window as any).lastActionSuccess || false,
-      conversation_history: conversationHistory,
       tabs: allTabs,
+      conversation_id: conversationId,
+      tool_results: null
     };
 
-    const response = await fetch(API_ENDPOINT, {
+    // Only add message if user provided one
+    if (userMessage) {
+      payload.message = userMessage;
+    }
+
+    const response = await fetch(API_ENDPOINTS.message, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json',
@@ -73,9 +66,45 @@ export async function sendToApi(
     return await response.json();
   } catch (error) {
     console.error('Error sending data to API:', error);
-    return {
-      message: 'Failed to process request',
-      error: error instanceof Error ? error.message : 'Unknown error'
-    };
+    throw error;
   }
+}
+
+/**
+ * Reset a conversation
+ */
+export async function resetConversation(conversationId: string): Promise<void> {
+  const response = await fetch(API_ENDPOINTS.resetConversation(conversationId), {
+    method: 'POST'
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to reset conversation: ${response.statusText}`);
+  }
+}
+
+/**
+ * Delete a conversation
+ */
+export async function deleteConversation(conversationId: string): Promise<void> {
+  const response = await fetch(API_ENDPOINTS.deleteConversation(conversationId), {
+    method: 'DELETE'
+  });
+  
+  if (!response.ok) {
+    throw new Error(`Failed to delete conversation: ${response.statusText}`);
+  }
+}
+
+/**
+ * Get all conversations
+ */
+export async function getConversations(): Promise<any[]> {
+  const response = await fetch(API_ENDPOINTS.getConversations);
+  
+  if (!response.ok) {
+    throw new Error(`Failed to fetch conversations: ${response.statusText}`);
+  }
+  
+  return response.json();
 }
