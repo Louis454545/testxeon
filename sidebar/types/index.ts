@@ -72,6 +72,8 @@ export interface MessageInputProps {
   onSubmit: (message: string) => Promise<void>;
   /** Whether a message is currently being sent */
   isSending: boolean;
+  /** Optional callback to cancel the sending process */
+  onCancel?: () => void;
 }
 
 /**

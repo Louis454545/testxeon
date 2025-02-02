@@ -4,7 +4,7 @@ import { Input } from "@/components/ui/input"
 import { SendHorizontalIcon, Square } from "lucide-react"
 import { MessageInputProps } from "../types"
 
-export function MessageInput({ onSubmit, isSending }: MessageInputProps) {
+export function MessageInput({ onSubmit, isSending, onCancel }: MessageInputProps) {
   const [inputValue, setInputValue] = useState("")
 
   const handleSubmit = (e: React.FormEvent) => {
@@ -26,7 +26,11 @@ export function MessageInput({ onSubmit, isSending }: MessageInputProps) {
             onChange={(e) => setInputValue(e.target.value)}
           />
         </div>
-        <Button type="submit" size="icon">
+        <Button 
+          type={isSending ? "button" : "submit"}
+          size="icon"
+          onClick={isSending ? onCancel : undefined}
+        >
           {isSending ? (
             <Square className="text-red-500" />
           ) : (

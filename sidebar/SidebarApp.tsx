@@ -1,4 +1,4 @@
-import { useState } from "react"
+import { useState, useRef } from "react"
 import { Header } from "./components/Header"
 import { MessageList } from "./components/MessageList"
 import { MessageInput } from "./components/MessageInput"
@@ -19,6 +19,15 @@ export default function SidebarApp() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
+
+  // Référence pour gérer l'annulation du processus d'envoi
+  const cancelSending = useRef(false);
+
+  const handleCancelMessage = () => {
+    if (isSending) {
+      cancelSending.current = true
+    }
+  }
 
   const handleNewConversation = () => {
     // Just clear messages without creating a conversation
@@ -78,6 +87,7 @@ export default function SidebarApp() {
   }
 
   const handleSubmitMessage = async (content: string) => {
+    cancelSending.current = false  // Réinitiation de l'annulation
     setIsSending(true)
     
     // Create and display user message immediately
@@ -103,9 +113,24 @@ export default function SidebarApp() {
         updateConversation(currentConversationId, messagesWithThinking);
       }
 
+      // Vérification d'annulation : rétablir l'état précédent sans le thinking
+      if (cancelSending.current) {
+        setMessages(updatedMessages);
+        if (currentConversationId) updateConversation(currentConversationId, updatedMessages);
+        return;
+      }
+
       // Get API response
       const [apiResponse, page, browser] = await MessageHandler.getApiResponse(content);
-
+      
+      // Vérification d'annulation après la réponse : rétablir l'état précédent
+      if (cancelSending.current) {
+        await DebuggerConnectionService.disconnect(browser);
+        setMessages(updatedMessages);
+        if (currentConversationId) updateConversation(currentConversationId, updatedMessages);
+        return;
+      }
+      
       // Show API response message
       const apiMessage = createMessage(apiResponse.content, false, apiResponse);
       const messagesWithResponse = [...updatedMessages, apiMessage];
@@ -124,6 +149,16 @@ export default function SidebarApp() {
         let lastResponse = apiResponse;
         
         while (lastResponse.action) {
+          // Vérifier l'annulation avant les followup : supprimer le thinking s'il est présent
+          if (cancelSending.current) {
+            setMessages(prev => prev.filter(m => m.content !== "Thinking..."));
+            if (currentConversationId) updateConversation(currentConversationId, 
+              // On se base sur l'état actuel en filtrant le thinking
+              messages.filter(m => m.content !== "Thinking...")
+            );
+            break;
+          }
+          
           // Show thinking message for followup
           const followupThinkingMessage = createThinkingMessage();
           setMessages(prev => [...prev, followupThinkingMessage]);
@@ -136,6 +171,14 @@ export default function SidebarApp() {
 
           // Send another request with updated context using the same page
           const [followupResponse] = await MessageHandler.getApiResponse(undefined, page);
+          
+          if (cancelSending.current) {
+            setMessages(prev => prev.filter(m => m.content !== "Thinking..."));
+            if (currentConversationId) updateConversation(currentConversationId, 
+              messages.filter(m => m.content !== "Thinking...")
+            );
+            break;
+          }
           
           // Create and add the followup message
           const followupMessage = createMessage(followupResponse.content, false, followupResponse);
@@ -150,12 +193,12 @@ export default function SidebarApp() {
             const currentMessages = messages.filter(m => m !== followupThinkingMessage);
             updateConversation(currentConversationId, [...currentMessages, followupMessage]);
           }
-
+          
           // Execute any actions from the followup response
           if (followupResponse.action) {
             await MessageHandler.executeAction(page, followupResponse);
           }
-
+          
           lastResponse = followupResponse;
         }
       } finally {
@@ -163,16 +206,18 @@ export default function SidebarApp() {
       }
     } catch (error) {
       console.error('Error processing message:', error);
-      // Update the user message with error state
-      const errorMessage = createMessage(`Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`, true);
-      
-      const finalMessages = updatedMessages.map(msg =>
-        msg === userMessage ? errorMessage : msg
-      );
-      setMessages(finalMessages);
+      // Si l'erreur est due à l'annulation, on ne présente pas de message d'erreur standard.
+      if (!(error instanceof Error && error.message === "Envoi annulé")) {
+        const errorMessage = createMessage(`Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`, true);
+        
+        const finalMessages = updatedMessages.map(msg =>
+          msg === userMessage ? errorMessage : msg
+        );
+        setMessages(finalMessages);
 
-      if (currentConversationId) {
-        updateConversation(currentConversationId, finalMessages);
+        if (currentConversationId) {
+          updateConversation(currentConversationId, finalMessages);
+        }
       }
     } finally {
       setIsSending(false);
@@ -221,6 +266,7 @@ export default function SidebarApp() {
           <MessageInput 
             onSubmit={handleSubmitMessage}
             isSending={isSending}
+            onCancel={handleCancelMessage}
           />
         </>
       ) : (
