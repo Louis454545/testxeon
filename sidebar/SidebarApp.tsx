@@ -87,142 +87,98 @@ export default function SidebarApp() {
   }
 
   const handleSubmitMessage = async (content: string) => {
-    cancelSending.current = false  // Réinitiation de l'annulation
-    setIsSending(true)
-    
-    // Create and display user message immediately
+    cancelSending.current = false;
+    setIsSending(true);
+
+    // Ajoute le message utilisateur
     const userMessage = createMessage(content, true);
-    const updatedMessages = [...messages, userMessage];
-    setMessages(updatedMessages);
-    
-    // Update or create conversation
+    const baseMessages = [...messages, userMessage];
+    setMessages(baseMessages);
     if (currentConversationId) {
-      updateConversation(currentConversationId, updatedMessages);
+      updateConversation(currentConversationId, baseMessages);
     } else {
-      createNewConversation(updatedMessages);
+      createNewConversation(baseMessages);
     }
-    
+
+    // Crée un message assistant avec un placeholder "Thinking..." et initialise une structure de segments
+    let assistantMessage = createMessage("Thinking...", false);
+    // On initialise snapshot.segments comme un tableau vide
+    assistantMessage.snapshot = { segments: [] };
+    let newMessages = [...baseMessages, assistantMessage];
+    setMessages(newMessages);
+    if (currentConversationId) updateConversation(currentConversationId, newMessages);
+
     try {
-      // Show thinking message first
-      const thinkingMessage = createThinkingMessage();
-      const messagesWithThinking = [...updatedMessages, thinkingMessage];
-      setMessages(messagesWithThinking);
-      
-      // Update conversation with thinking state
-      if (currentConversationId) {
-        updateConversation(currentConversationId, messagesWithThinking);
-      }
-
-      // Vérification d'annulation : rétablir l'état précédent sans le thinking
-      if (cancelSending.current) {
-        setMessages(updatedMessages);
-        if (currentConversationId) updateConversation(currentConversationId, updatedMessages);
-        return;
-      }
-
-      // Get API response
+      // Obtenir la réponse API initiale
       const [apiResponse, page, browser] = await MessageHandler.getApiResponse(content);
-      
-      // Vérification d'annulation après la réponse : rétablir l'état précédent
       if (cancelSending.current) {
         await DebuggerConnectionService.disconnect(browser);
-        setMessages(updatedMessages);
-        if (currentConversationId) updateConversation(currentConversationId, updatedMessages);
+        setMessages(baseMessages);
+        if (currentConversationId) updateConversation(currentConversationId, baseMessages);
         return;
       }
-      
-      // Show API response message
-      const apiMessage = createMessage(apiResponse.content, false, apiResponse);
-      const messagesWithResponse = [...updatedMessages, apiMessage];
-      setMessages(messagesWithResponse);
-      
-      // Update conversation with API response
-      if (currentConversationId) {
-        updateConversation(currentConversationId, messagesWithResponse);
-      }
+      // Ajout de la première réponse en tant que segment
+      const initialSegment = {
+        content: apiResponse.content,
+        actions: apiResponse.action
+          ? (Array.isArray(apiResponse.action)
+              ? apiResponse.action
+              : [apiResponse.action])
+          : []
+      };
+      assistantMessage.snapshot.segments.push(initialSegment);
+      // Met à jour le contenu global (optionnel, utile pour la sauvegarde)
+      assistantMessage.content = assistantMessage.snapshot.segments
+        .map(seg => seg.content)
+        .join("\n");
+      newMessages = [...baseMessages, assistantMessage];
+      setMessages(newMessages);
+      if (currentConversationId) updateConversation(currentConversationId, newMessages);
 
-      // Execute action after showing both messages
-      try {
-        await MessageHandler.executeAction(page, apiResponse);
-        
-        // Keep processing followup responses until no more actions
-        let lastResponse = apiResponse;
-        
-        while (lastResponse.action) {
-          // Vérifier l'annulation avant les followup : supprimer le thinking s'il est présent
-          if (cancelSending.current) {
-            setMessages(prev => prev.filter(m => m.content !== "Thinking..."));
-            if (currentConversationId) updateConversation(currentConversationId, 
-              // On se base sur l'état actuel en filtrant le thinking
-              messages.filter(m => m.content !== "Thinking...")
-            );
-            break;
-          }
-          
-          // Show thinking message for followup
-          const followupThinkingMessage = createThinkingMessage();
-          setMessages(prev => [...prev, followupThinkingMessage]);
-          
-          // Update conversation with thinking state
-          if (currentConversationId) {
-            const currentMessages = [...messages, followupThinkingMessage];
-            updateConversation(currentConversationId, currentMessages);
-          }
+      // Exécution des actions de la réponse initiale
+      await MessageHandler.executeAction(page, apiResponse);
 
-          // Send another request with updated context using the same page
-          const [followupResponse] = await MessageHandler.getApiResponse(undefined, page);
-          
-          if (cancelSending.current) {
-            setMessages(prev => prev.filter(m => m.content !== "Thinking..."));
-            if (currentConversationId) updateConversation(currentConversationId, 
-              messages.filter(m => m.content !== "Thinking...")
-            );
-            break;
-          }
-          
-          // Create and add the followup message
-          const followupMessage = createMessage(followupResponse.content, false, followupResponse);
-          setMessages(prev => {
-            // Remove thinking message and add followup message
-            const withoutThinking = prev.filter(m => m !== followupThinkingMessage);
-            return [...withoutThinking, followupMessage];
-          });
-          
-          // Update conversation if needed
-          if (currentConversationId) {
-            const currentMessages = messages.filter(m => m !== followupThinkingMessage);
-            updateConversation(currentConversationId, [...currentMessages, followupMessage]);
-          }
-          
-          // Execute any actions from the followup response
-          if (followupResponse.action) {
-            await MessageHandler.executeAction(page, followupResponse);
-          }
-          
-          lastResponse = followupResponse;
-        }
-      } finally {
-        await DebuggerConnectionService.disconnect(browser);
+      let lastResponse = apiResponse;
+      // Si la réponse contient des actions, on traite les follow-up dans le même message en cumulant les actions
+      while (lastResponse.action && !cancelSending.current) {
+        const [followupResponse] = await MessageHandler.getApiResponse(undefined, page);
+        if (cancelSending.current) break;
+ 
+        // Ajoute la réponse follow-up comme nouveau segment
+        const followupSegment = {
+          content: followupResponse.content,
+          actions: followupResponse.action
+            ? (Array.isArray(followupResponse.action)
+                ? followupResponse.action
+                : [followupResponse.action])
+            : []
+        };
+        assistantMessage.snapshot.segments.push(followupSegment);
+        // Met à jour le contenu global (facultatif)
+        assistantMessage.content = assistantMessage.snapshot.segments
+          .map(seg => seg.content)
+          .join("\n");
+ 
+        newMessages = [...baseMessages, assistantMessage];
+        setMessages(newMessages);
+        if (currentConversationId) updateConversation(currentConversationId, newMessages);
+        
+        // Exécute les actions du follow-up
+        await MessageHandler.executeAction(page, followupResponse);
+
+        lastResponse = followupResponse;
       }
+      await DebuggerConnectionService.disconnect(browser);
     } catch (error) {
       console.error('Error processing message:', error);
-      // Si l'erreur est due à l'annulation, on ne présente pas de message d'erreur standard.
-      if (!(error instanceof Error && error.message === "Envoi annulé")) {
-        const errorMessage = createMessage(`Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`, true);
-        
-        const finalMessages = updatedMessages.map(msg =>
-          msg === userMessage ? errorMessage : msg
-        );
-        setMessages(finalMessages);
-
-        if (currentConversationId) {
-          updateConversation(currentConversationId, finalMessages);
-        }
-      }
+      assistantMessage.content = `Failed to process message: ${error instanceof Error ? error.message : 'Unknown error'}`;
+      newMessages = [...baseMessages, assistantMessage];
+      setMessages(newMessages);
+      if (currentConversationId) updateConversation(currentConversationId, newMessages);
     } finally {
       setIsSending(false);
     }
-  }
+  };
 
   const handleSelectConversation = (id: string) => {
     const conversation = conversations.find(conv => conv.id === id)
