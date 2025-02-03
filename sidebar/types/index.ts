@@ -1,5 +1,10 @@
 import type { ApiResponse, Action } from './api';
 
+interface MessageSegment {
+  content: string;
+  actions: Action[];
+}
+
 /**
  * Represents a message in the chat interface
  */
@@ -18,6 +23,7 @@ export interface Message {
     action?: Action | Action[];
     content?: string;
     conversation_id?: string;
+    segments?: MessageSegment[];
   };
 }
 
@@ -84,6 +90,8 @@ export interface HeaderProps {
   onNewConversation: () => void;
   /** Callback to view conversation list */
   onViewConversations: () => void;
+  /** Callback to view settings */
+  onViewSettings: () => void;
 }
 
 /**

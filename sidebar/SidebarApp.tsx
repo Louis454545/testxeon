@@ -1,8 +1,9 @@
-import { useState, useRef } from "react"
+import { useState, useRef, useEffect } from "react"
 import { Header } from "./components/Header"
 import { MessageList } from "./components/MessageList"
 import { MessageInput } from "./components/MessageInput"
 import { ConversationsPage } from "./components/ConversationsPage"
+import { SettingsPage } from "./components/SettingsPage"
 import { Message, Conversation, createMessage } from "./types"
 import { MessageHandler } from "./components/MessageHandler"
 import { DebuggerConnectionService } from "./utils/debuggerConnection"
@@ -10,7 +11,8 @@ import { createThinkingMessage } from "./components/ThinkingMessage"
 import { PageCaptureService } from "./utils/pageCapture"
 import './styles.css'
 
-type View = 'chat' | 'conversations';
+type View = 'chat' | 'conversations' | 'settings';
+type Theme = 'light' | 'dark' | 'system';
 
 export default function SidebarApp() {
   const [messages, setMessages] = useState<Message[]>([])
@@ -22,6 +24,19 @@ export default function SidebarApp() {
 
   // Référence pour gérer l'annulation du processus d'envoi
   const cancelSending = useRef(false);
+
+  useEffect(() => {
+    // Initialize theme from storage on mount
+    chrome.storage.local.get('theme', (result) => {
+      const savedTheme = result.theme ?? 'system'
+      if (savedTheme === 'system') {
+        const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
+        document.documentElement.className = isDarkMode ? 'dark' : ''
+      } else {
+        document.documentElement.className = savedTheme === 'dark' ? 'dark' : ''
+      }
+    })
+  }, [])
 
   const handleCancelMessage = () => {
     if (isSending) {
@@ -45,6 +60,10 @@ export default function SidebarApp() {
       createNewConversation(messages)
     }
     setCurrentView('conversations')
+  }
+
+  const handleViewSettings = () => {
+    setCurrentView('settings')
   }
 
   const createNewConversation = (msgs: Message[]) => {
@@ -102,7 +121,6 @@ export default function SidebarApp() {
 
     // Crée un message assistant avec un placeholder "Thinking..." et initialise une structure de segments
     let assistantMessage = createMessage("Thinking...", false);
-    // On initialise snapshot.segments comme un tableau vide
     assistantMessage.snapshot = { segments: [] };
     let newMessages = [...baseMessages, assistantMessage];
     setMessages(newMessages);
@@ -126,11 +144,13 @@ export default function SidebarApp() {
               : [apiResponse.action])
           : []
       };
-      assistantMessage.snapshot.segments.push(initialSegment);
-      // Met à jour le contenu global (optionnel, utile pour la sauvegarde)
-      assistantMessage.content = assistantMessage.snapshot.segments
-        .map(seg => seg.content)
-        .join("\n");
+      if (assistantMessage.snapshot?.segments) {
+        assistantMessage.snapshot.segments.push(initialSegment);
+        // Met à jour le contenu global (optionnel, utile pour la sauvegarde)
+        assistantMessage.content = assistantMessage.snapshot.segments
+          .map(seg => seg.content)
+          .join("\n");
+      }
       newMessages = [...baseMessages, assistantMessage];
       setMessages(newMessages);
       if (currentConversationId) updateConversation(currentConversationId, newMessages);
@@ -153,11 +173,13 @@ export default function SidebarApp() {
                 : [followupResponse.action])
             : []
         };
-        assistantMessage.snapshot.segments.push(followupSegment);
-        // Met à jour le contenu global (facultatif)
-        assistantMessage.content = assistantMessage.snapshot.segments
-          .map(seg => seg.content)
-          .join("\n");
+        if (assistantMessage.snapshot?.segments) {
+          assistantMessage.snapshot.segments.push(followupSegment);
+          // Met à jour le contenu global (facultatif)
+          assistantMessage.content = assistantMessage.snapshot.segments
+            .map(seg => seg.content)
+            .join("\n");
+        }
  
         newMessages = [...baseMessages, assistantMessage];
         setMessages(newMessages);
@@ -211,10 +233,11 @@ export default function SidebarApp() {
   )
 
   return (
-    <div className="h-full dark flex flex-col">
+    <div className="h-full flex flex-col">
       <Header 
         onNewConversation={handleNewConversation}
         onViewConversations={handleViewConversations}
+        onViewSettings={handleViewSettings}
       />
       {currentView === 'chat' ? (
         <>
@@ -225,13 +248,15 @@ export default function SidebarApp() {
             onCancel={handleCancelMessage}
           />
         </>
-      ) : (
+      ) : currentView === 'conversations' ? (
         <ConversationsPage
           conversations={filteredConversations}
           onSelectConversation={handleSelectConversation}
           onDeleteConversation={handleDeleteConversation}
           onSearch={handleSearch}
         />
+      ) : (
+        <SettingsPage />
       )}
     </div>
   )

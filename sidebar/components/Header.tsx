@@ -2,7 +2,7 @@ import { Button } from "@/components/ui/button"
 import { Plus, Settings, MessageSquareText } from "lucide-react"
 import { HeaderProps } from "../types"
 
-export function Header({ onNewConversation, onViewConversations }: HeaderProps) {
+export function Header({ onNewConversation, onViewConversations, onViewSettings }: HeaderProps) {
   return (
     <div className="h-12 px-4 border-b flex justify-end items-center gap-2">
       <Button 
@@ -22,6 +22,7 @@ export function Header({ onNewConversation, onViewConversations }: HeaderProps) 
       <Button 
         variant="ghost" 
         size="icon"
+        onClick={onViewSettings}
       >
         <Settings size={20} />
       </Button>
