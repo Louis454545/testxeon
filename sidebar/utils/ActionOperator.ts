@@ -31,7 +31,13 @@ export class ActionOperator {
           return false;
         }
 
-        await elementHandle.click();
+        await Promise.all([
+          elementHandle.click(),
+          this.page.waitForNavigation({ 
+            waitUntil: 'networkidle0',
+            timeout: 30000 
+          }).catch(e => console.log('Navigation normale après clic'))
+        ]);
         return true;
       }
 
