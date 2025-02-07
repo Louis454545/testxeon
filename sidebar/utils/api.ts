@@ -31,7 +31,8 @@ export async function sendToApi(
   snapshot: any,
   screenshot: string,
   userMessage?: string,
-  conversationId: string | null = null
+  conversationId: string | null = null,
+  lastActionResults?: boolean[]
 ): Promise<ApiResponse> {
   try {
     const allTabs = await getAllTabs();
@@ -40,7 +41,7 @@ export async function sendToApi(
     const payload: Partial<ApiPayload> = {
       context: JSON.stringify(snapshot),
       image: screenshot,
-      last_action_success: (window as any).lastActionSuccess || false,
+      last_action_success: lastActionResults?.some(r => r) || false,
       tabs: allTabs,
       conversation_id: conversationId,
       tool_results: null

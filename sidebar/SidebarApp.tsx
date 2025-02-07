@@ -128,7 +128,7 @@ export default function SidebarApp() {
 
     try {
       // Obtenir la réponse API initiale
-      const [apiResponse, page, browser] = await MessageHandler.getApiResponse(content);
+      const [apiResponse, page, browser] = await MessageHandler.getApiResponse(content, null, []);
       if (cancelSending.current) {
         await DebuggerConnectionService.disconnect(browser);
         setMessages(baseMessages);
@@ -139,14 +139,24 @@ export default function SidebarApp() {
       // Met à jour le premier segment avec la réponse
       assistantMessage.snapshot!.segments[0] = {
         content: apiResponse.content,
-        actions: apiResponse.action ? [apiResponse.action].flat() : []
+        actions: apiResponse.action ? [apiResponse.action].flat().map(action => ({
+          action,
+          success: undefined
+        })) : []
       };
       newMessages = [...baseMessages, assistantMessage];
       setMessages(newMessages);
       if (currentConversationId) updateConversation(currentConversationId, newMessages);
 
       // Exécution des actions de la réponse initiale
-      await MessageHandler.executeAction(page, apiResponse);
+      const actionSuccess = await MessageHandler.executeAction(page, apiResponse);
+      assistantMessage.snapshot!.segments[0].actions = apiResponse.action.map((action, index) => ({
+        action,
+        success: actionSuccess[index]
+      }));
+      newMessages = [...baseMessages, assistantMessage];
+      setMessages(newMessages);
+      if (currentConversationId) updateConversation(currentConversationId, newMessages);
 
       let lastResponse = apiResponse;
       while (lastResponse.action && !cancelSending.current) {
@@ -156,19 +166,31 @@ export default function SidebarApp() {
         setMessages(newMessages);
         if (currentConversationId) updateConversation(currentConversationId, newMessages);
 
-        const [followupResponse] = await MessageHandler.getApiResponse(undefined, page);
+        const [followupResponse] = await MessageHandler.getApiResponse(undefined, page, actionSuccess);
         if (cancelSending.current) break;
 
         // Remplace le dernier "Thinking..." par la réponse
         assistantMessage.snapshot!.segments[assistantMessage.snapshot!.segments.length - 1] = {
           content: followupResponse.content,
-          actions: followupResponse.action ? [followupResponse.action].flat() : []
+          actions: followupResponse.action ? [followupResponse.action].flat().map(action => ({
+            action,
+            success: undefined
+          })) : []
         };
         newMessages = [...baseMessages, assistantMessage];
         setMessages(newMessages);
         if (currentConversationId) updateConversation(currentConversationId, newMessages);
 
         await MessageHandler.executeAction(page, followupResponse);
+        const followupSuccess = await MessageHandler.executeAction(page, followupResponse);
+        assistantMessage.snapshot!.segments[assistantMessage.snapshot!.segments.length - 1].actions = followupResponse.action.map((action, index) => ({
+          action,
+          success: followupSuccess[index]
+        }));
+        newMessages = [...baseMessages, assistantMessage];
+        setMessages(newMessages);
+        if (currentConversationId) updateConversation(currentConversationId, newMessages);
+
         lastResponse = followupResponse;
       }
 

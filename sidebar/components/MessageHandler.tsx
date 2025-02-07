@@ -10,7 +10,8 @@ export class MessageHandler {
 
   static async getApiResponse(
     content: string | undefined = undefined,
-    existingPage: any = null
+    existingPage: any = null,
+    lastActionResults: boolean[] = []
   ): Promise<[ApiResponse, any, any]> {
     let page;
     let browser;
@@ -32,7 +33,8 @@ export class MessageHandler {
         pageData.accessibility,
         pageData.screenshot,
         content,
-        this.currentConversationId
+        this.currentConversationId,
+        lastActionResults
       );
 
       // Store the conversation ID for future requests
@@ -47,25 +49,22 @@ export class MessageHandler {
     }
   }
 
-  static async executeAction(page: any, apiResponse: ApiResponse): Promise<boolean> {
+  static async executeAction(page: any, apiResponse: ApiResponse): Promise<boolean[]> {
     if (apiResponse.action) {
       const actionOperator = new ActionOperator(page);
       try {
-        let actionSuccess = true;
-        // Execute each action in sequence
+        const results: boolean[] = [];
         for (const action of apiResponse.action) {
           const success = await actionOperator.executeAction(action);
-          actionSuccess = actionSuccess && success;
-          (window as any).lastActionSuccess = success;
+          results.push(success);
         }
-        return actionSuccess;
+        return results;
       } catch (error) {
         console.error('Error executing action:', error);
-        (window as any).lastActionSuccess = false;
-        return false;
+        return apiResponse.action.map(() => false);
       }
     }
-    return true;
+    return [];
   }
 
   static async processMessage(content: string): Promise<Message> {

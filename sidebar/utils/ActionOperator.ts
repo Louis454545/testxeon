@@ -31,14 +31,20 @@ export class ActionOperator {
           return false;
         }
 
-        await Promise.all([
-          elementHandle.click(),
-          this.page.waitForNavigation({ 
-            waitUntil: 'networkidle0',
-            timeout: 30000 
-          }).catch(e => console.log('Navigation normale après clic'))
-        ]);
-        return true;
+        try {
+          await Promise.race([
+            elementHandle.click(),
+            this.page.waitForNavigation({ 
+              waitUntil: 'networkidle0',
+              timeout: 2000
+            }).catch(() => {}),
+            new Promise(resolve => setTimeout(resolve, 2000))
+          ]);
+          return true;
+        } catch (error) {
+          console.error('Error during click:', error);
+          return false;
+        }
       }
 
       if (isInputAction(action)) {

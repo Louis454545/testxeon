@@ -63,7 +63,15 @@ const getActionConfig = (action: Action) => {
   return configs[action.name] || configs[ActionName.CLICK];
 };
 
-const ActionBadge = ({ action, isExecuting }: { action: Action; isExecuting?: boolean }) => {
+const ActionBadge = ({ 
+  action, 
+  isExecuting,
+  success
+}: { 
+  action: Action; 
+  isExecuting?: boolean;
+  success?: boolean;
+}) => {
   const config = getActionConfig(action);
   const Icon = config.icon;
 
@@ -98,8 +106,8 @@ const ActionBadge = ({ action, isExecuting }: { action: Action; isExecuting?: bo
           config.iconColor
         )} />
       ) : (
-        typeof (window as any).lastActionSuccess === 'boolean' && (
-          (window as any).lastActionSuccess ? 
+        success !== undefined && (
+          success ? 
             <Check className="w-3.5 h-3.5 text-green-500 dark:text-green-400 ml-1 animate-fade-scale" /> :
             <XCircle className="w-3.5 h-3.5 text-red-500 dark:text-red-400 ml-1 animate-fade-scale" />
         )
@@ -194,8 +202,8 @@ export function MessageItem({ message }: MessageItemProps) {
                         </p>
                         {segment.actions && segment.actions.length > 0 && (
                           <div className="mt-3 flex flex-wrap gap-2 animate-slide-up">
-                            {segment.actions.map((action, j) => (
-                              <ActionBadge key={j} action={action} />
+                            {segment.actions.map(({ action, success }, j) => (
+                              <ActionBadge key={j} action={action} success={success} />
                             ))}
                           </div>
                         )}
@@ -217,8 +225,8 @@ export function MessageItem({ message }: MessageItemProps) {
                     {(Array.isArray(message.snapshot.action)
                       ? message.snapshot.action
                       : [message.snapshot.action]
-                    ).map((action, index) => (
-                      <ActionBadge key={index} action={action} />
+                    ).map(({ action, success }, index) => (
+                      <ActionBadge key={index} action={action} success={success} />
                     ))}
                   </div>
                 )}
