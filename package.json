@@ -36,7 +36,7 @@
   },
   "scripts": {
     "dev": "extension dev",
-    "start": "extension start",
-    "build": "extension build"
+    "start": "NODE_ENV=production extension start",
+    "build": "NODE_ENV=production extension build"
   }
 }

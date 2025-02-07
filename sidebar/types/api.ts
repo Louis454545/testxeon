@@ -57,7 +57,7 @@ export interface InputAction extends ActionBase {
 export interface GoToUrlAction extends ActionBase {
   name: ActionName.GO_TO_URL;
   args: {
-    url: string;
+    target: string;
     description?: string;
   };
 }

@@ -1,0 +1,14 @@
+{
+  "presets": [
+    "next/babel",
+    "@babel/preset-typescript"
+  ],
+  "plugins": [
+    ["transform-remove-console"]
+  ],
+  "env": {
+    "production": {
+      "plugins": [["transform-remove-console"]]
+    }
+  }
+} 
