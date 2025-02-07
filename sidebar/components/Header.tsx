@@ -5,11 +5,11 @@ import { ModelSelector } from "./ModelSelector"
 
 export function Header({ onNewConversation, onViewConversations, onViewSettings }: HeaderProps) {
   return (
-    <div className="h-12 px-4 border-b flex items-center gap-2">
-      <div className="flex-1">
+    <div className="h-12 px-3 border-b flex items-center justify-between gap-2">
+      <div className="flex-shrink-0">
         <ModelSelector />
       </div>
-      <div className="flex items-center gap-1">
+      <div className="flex items-center gap-0.5">
         <Button 
           variant="ghost" 
           size="icon"
