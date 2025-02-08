@@ -159,7 +159,10 @@ export default function SidebarApp() {
       if (currentConversationId) updateConversation(currentConversationId, newMessages);
 
       let lastResponse = apiResponse;
-      while (lastResponse.action && !cancelSending.current) {
+      while (!cancelSending.current) {
+        if (!lastResponse.action || lastResponse.action.length === 0) {
+          break; // Stop if no actions are returned
+        }
         // Ajoute un nouveau segment "Thinking..." pour le follow-up
         assistantMessage.snapshot!.segments.push({ content: "Thinking...", actions: [] });
         newMessages = [...baseMessages, assistantMessage];

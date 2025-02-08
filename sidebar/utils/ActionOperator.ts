@@ -60,12 +60,17 @@ export class ActionOperator {
           return false;
         }
 
+        await elementHandle.evaluate((el: HTMLInputElement) => {
+          el.value = '';
+          el.dispatchEvent(new Event('input', { bubbles: true }));
+        });
+        
         await elementHandle.type(action.args.text);
         return true;
       }
 
       if (isGoToUrlAction(action)) {
-        await this.page.goto(action.args.url);
+        await this.page.goto(action.args.target);
         return true;
       }
 
