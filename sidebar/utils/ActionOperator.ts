@@ -31,20 +31,20 @@ export class ActionOperator {
           return false;
         }
 
-        try {
-          await Promise.race([
-            elementHandle.click(),
-            this.page.waitForNavigation({ 
-              waitUntil: 'networkidle0',
-              timeout: 2000
-            }).catch(() => {}),
-            new Promise(resolve => setTimeout(resolve, 2000))
-          ]);
-          return true;
-        } catch (error) {
-          console.error('Error during click:', error);
-          return false;
-        }
+        const navigationPromise = this.page.waitForNavigation({ 
+          waitUntil: 'networkidle0', 
+          timeout: 5000
+        });
+        
+        await elementHandle.click();
+        
+        // Combine l'attente de navigation et des requêtes secondaires
+        await Promise.race([
+          navigationPromise,
+          this.page.waitForNetworkIdle({ timeout: 5000 })
+        ]);
+        
+        return true;
       }
 
       if (isInputAction(action)) {
@@ -66,11 +66,17 @@ export class ActionOperator {
         });
         
         await elementHandle.type(action.args.text);
+        
+        // Attente après saisie pour les mises à jour dynamiques
+        await this.page.waitForNetworkIdle({ timeout: 2000 }).catch(() => {});
         return true;
       }
 
       if (isGoToUrlAction(action)) {
-        await this.page.goto(action.args.target);
+        await this.page.goto(action.args.target, { 
+          waitUntil: 'networkidle0',
+          timeout: 15000 
+        });
         return true;
       }
 
