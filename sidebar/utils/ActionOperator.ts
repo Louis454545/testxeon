@@ -30,20 +30,9 @@ export class ActionOperator {
           console.error('Failed to get element handle');
           return false;
         }
-
-        const navigationPromise = this.page.waitForNavigation({ 
-          waitUntil: 'networkidle0', 
-          timeout: 5000
-        });
         
         await elementHandle.click();
-        
-        // Combine l'attente de navigation et des requêtes secondaires
-        await Promise.race([
-          navigationPromise,
-          this.page.waitForNetworkIdle({ timeout: 5000 })
-        ]);
-        
+        await this.page.waitForFunction(() => document.readyState !== 'loading');
         return true;
       }
 
@@ -66,17 +55,13 @@ export class ActionOperator {
         });
         
         await elementHandle.type(action.args.text);
-        
-        // Attente après saisie pour les mises à jour dynamiques
-        await this.page.waitForNetworkIdle({ timeout: 2000 }).catch(() => {});
+        await this.page.waitForFunction(() => document.readyState !== 'loading');
         return true;
       }
 
       if (isGoToUrlAction(action)) {
-        await this.page.goto(action.args.target, { 
-          waitUntil: 'networkidle0',
-          timeout: 15000 
-        });
+        await this.page.goto(action.args.target);
+        await this.page.waitForFunction(() => document.readyState !== 'loading');
         return true;
       }
 
@@ -90,7 +75,7 @@ export class ActionOperator {
         }
       }
 
-      console.error(`Unsupported action type: ${action.name}`);
+      console.error(`Unsupported action type: ${JSON.stringify(action)}`);
       return false;
     } catch (error) {
       console.error('Error executing action:', error);
