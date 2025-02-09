@@ -27,7 +27,6 @@ export class PageCaptureService {
       page.accessibility.snapshot(),
       page.screenshot({
         encoding: 'base64',
-        fullPage: true,
         type: 'png'
       })
     ]);
@@ -53,7 +52,6 @@ export class PageCaptureService {
     try {
       const screenshot = await page.screenshot({
         encoding: 'base64',
-        fullPage: true,
         type: 'png'
       });
       
