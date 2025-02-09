@@ -7,7 +7,9 @@ import {
   Check, 
   XCircle,
   Loader2,
-  Sparkle
+  Sparkle,
+  ArrowLeft,
+  ArrowRight
 } from "lucide-react";
 import { Action, ActionName } from "../types/api";
 import { ThinkingMessage } from "./ThinkingMessage";
@@ -41,7 +43,7 @@ const getActionConfig = (action: Action) => {
       hoverBg: 'hover:bg-purple-100/80 dark:hover:bg-purple-500/20',
       shadowColor: 'shadow-purple-500/25'
     },
-    [ActionName.GO_TO_URL]: {
+    [ActionName.NAVIGATE]: {
       icon: Globe,
       bgColor: 'bg-green-50 dark:bg-green-500/10',
       textColor: 'text-green-700 dark:text-green-300',
@@ -58,6 +60,24 @@ const getActionConfig = (action: Action) => {
       iconColor: 'text-orange-600 dark:text-orange-400',
       hoverBg: 'hover:bg-orange-100/80 dark:hover:bg-orange-500/20',
       shadowColor: 'shadow-orange-500/25'
+    },
+    [ActionName.BACK]: {
+      icon: ArrowLeft,
+      bgColor: 'bg-yellow-50 dark:bg-yellow-500/10',
+      textColor: 'text-yellow-700 dark:text-yellow-300',
+      borderColor: 'border-yellow-200/50 dark:border-yellow-400/20',
+      iconColor: 'text-yellow-600 dark:text-yellow-400',
+      hoverBg: 'hover:bg-yellow-100/80 dark:hover:bg-yellow-500/20',
+      shadowColor: 'shadow-yellow-500/25'
+    },
+    [ActionName.FORWARD]: {
+      icon: ArrowRight,
+      bgColor: 'bg-cyan-50 dark:bg-cyan-500/10',
+      textColor: 'text-cyan-700 dark:text-cyan-300',
+      borderColor: 'border-cyan-200/50 dark:border-cyan-400/20',
+      iconColor: 'text-cyan-600 dark:text-cyan-400',
+      hoverBg: 'hover:bg-cyan-100/80 dark:hover:bg-cyan-500/20',
+      shadowColor: 'shadow-cyan-500/25'
     }
   };
   return configs[action.name] || configs[ActionName.CLICK];

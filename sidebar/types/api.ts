@@ -14,8 +14,10 @@ export interface Tab {
 export enum ActionName {
   CLICK = 'click',
   INPUT = 'input',
-  GO_TO_URL = 'go_to_url',
-  SWITCH_TAB = 'switch_tab'
+  NAVIGATE = 'navigate',
+  SWITCH_TAB = 'switch_tab',
+  BACK = 'back',
+  FORWARD = 'forward'
 }
 
 /**
@@ -34,7 +36,7 @@ interface ActionBase {
 export interface ClickAction extends ActionBase {
   name: ActionName.CLICK;
   args: {
-    target: string;
+    id: string;
     description?: string;
   };
 }
@@ -45,7 +47,7 @@ export interface ClickAction extends ActionBase {
 export interface InputAction extends ActionBase {
   name: ActionName.INPUT;
   args: {
-    target: string;
+    id: string;
     text: string;
     description?: string;
   };
@@ -54,10 +56,10 @@ export interface InputAction extends ActionBase {
 /**
  * Navigate to URL action
  */
-export interface GoToUrlAction extends ActionBase {
-  name: ActionName.GO_TO_URL;
+export interface NavigateAction extends ActionBase {
+  name: ActionName.NAVIGATE;
   args: {
-    target: string;
+    url: string;
     description?: string;
   };
 }
@@ -74,9 +76,29 @@ export interface SwitchTabAction extends ActionBase {
 }
 
 /**
+ * Navigate back action
+ */
+export interface BackAction extends ActionBase {
+  name: ActionName.BACK;
+  args: {
+    description?: string;
+  };
+}
+
+/**
+ * Navigate forward action
+ */
+export interface ForwardAction extends ActionBase {
+  name: ActionName.FORWARD;
+  args: {
+    description?: string;
+  };
+}
+
+/**
  * Union type of all possible actions
  */
-export type Action = ClickAction | InputAction | GoToUrlAction | SwitchTabAction;
+export type Action = ClickAction | InputAction | NavigateAction | SwitchTabAction | BackAction | ForwardAction;
 
 /**
  * Type guards for actions
@@ -87,11 +109,17 @@ export const isClickAction = (action: Action): action is ClickAction =>
 export const isInputAction = (action: Action): action is InputAction =>
   action.name === ActionName.INPUT;
 
-export const isGoToUrlAction = (action: Action): action is GoToUrlAction =>
-  action.name === ActionName.GO_TO_URL;
+export const isNavigateAction = (action: Action): action is NavigateAction =>
+  action.name === ActionName.NAVIGATE;
 
 export const isSwitchTabAction = (action: Action): action is SwitchTabAction =>
   action.name === ActionName.SWITCH_TAB;
+
+export const isBackAction = (action: Action): action is BackAction =>
+  action.name === ActionName.BACK;
+
+export const isForwardAction = (action: Action): action is ForwardAction =>
+  action.name === ActionName.FORWARD;
 
 /**
  * Complete payload structure for API communication

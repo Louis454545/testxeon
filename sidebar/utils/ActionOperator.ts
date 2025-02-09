@@ -4,8 +4,10 @@ import {
   ActionName,
   isClickAction,
   isInputAction,
-  isGoToUrlAction,
-  isSwitchTabAction 
+  isNavigateAction,
+  isSwitchTabAction,
+  isBackAction,
+  isForwardAction
 } from '../types/api';
 import { nodeMap } from './pageCapture';
 
@@ -19,9 +21,9 @@ export class ActionOperator {
   async executeAction(action: Action): Promise<boolean> {
     try {
       if (isClickAction(action)) {
-        const node = nodeMap.get(String(action.args.target));
+        const node = nodeMap.get(String(action.args.id));
         if (!node) {
-          console.error(`Node not found for target: ${action.args.target}`);
+          console.error(`Node not found for target: ${action.args.id}`);
           return false;
         }
 
@@ -37,9 +39,9 @@ export class ActionOperator {
       }
 
       if (isInputAction(action)) {
-        const node = nodeMap.get(String(action.args.target));
+        const node = nodeMap.get(String(action.args.id));
         if (!node) {
-          console.error(`Node not found for target: ${action.args.target}`);
+          console.error(`Node not found for target: ${action.args.id}`);
           return false;
         }
 
@@ -59,8 +61,8 @@ export class ActionOperator {
         return true;
       }
 
-      if (isGoToUrlAction(action)) {
-        await this.page.goto(action.args.target);
+      if (isNavigateAction(action)) {
+        await this.page.goto(action.args.url);
         await this.page.waitForFunction(() => document.readyState !== 'loading');
         return true;
       }
@@ -73,6 +75,18 @@ export class ActionOperator {
           console.error('Error switching tab:', error);
           return false;
         }
+      }
+
+      if (isBackAction(action)) {
+        await this.page.goBack();
+        await this.page.waitForFunction(() => document.readyState !== 'loading');
+        return true;
+      }
+
+      if (isForwardAction(action)) {
+        await this.page.goForward();
+        await this.page.waitForFunction(() => document.readyState !== 'loading');
+        return true;
       }
 
       console.error(`Unsupported action type: ${JSON.stringify(action)}`);
