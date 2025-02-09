@@ -45,10 +45,10 @@ export default function SidebarApp() {
   }
 
   const handleNewConversation = () => {
-    // Just clear messages without creating a conversation
-    setMessages([])
-    setCurrentConversationId(null)
-    setCurrentView('chat')
+    MessageHandler.closeConnection();
+    setMessages([]);
+    setCurrentConversationId(null);
+    setCurrentView('chat');
   }
 
   const handleViewConversations = () => {
@@ -110,7 +110,11 @@ export default function SidebarApp() {
     setIsSending(true);
 
     // Ajoute le message utilisateur
-    const userMessage = createMessage(content, true);
+    const userMessage: Message = {
+      content,
+      isUser: true,
+      timestamp: new Date(),
+    };
     const baseMessages = [...messages, userMessage];
     setMessages(baseMessages);
     if (currentConversationId) {
@@ -127,15 +131,14 @@ export default function SidebarApp() {
     if (currentConversationId) updateConversation(currentConversationId, newMessages);
 
     try {
-      // Obtenir la réponse API initiale
       const [apiResponse, page, browser] = await MessageHandler.getApiResponse(content, null, []);
       if (cancelSending.current) {
-        await DebuggerConnectionService.disconnect(browser);
+        // Annuler sans déconnecter
         setMessages(baseMessages);
         if (currentConversationId) updateConversation(currentConversationId, baseMessages);
         return;
       }
-
+      
       // Met à jour le premier segment avec la réponse
       assistantMessage.snapshot!.segments[0] = {
         content: apiResponse.content,
@@ -197,7 +200,6 @@ export default function SidebarApp() {
         lastResponse = followupResponse;
       }
 
-      await DebuggerConnectionService.disconnect(browser);
     } catch (error) {
       console.error('Error processing message:', error);
       assistantMessage.snapshot!.segments.push({
