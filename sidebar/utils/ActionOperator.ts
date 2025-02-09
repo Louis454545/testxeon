@@ -48,7 +48,7 @@ export class ActionOperator {
           console.error('Failed to get element handle');
           return false;
         }
-
+        await elementHandle.focus();
         await elementHandle.evaluate((el: HTMLInputElement) => {
           el.value = '';
           el.dispatchEvent(new Event('input', { bubbles: true }));
