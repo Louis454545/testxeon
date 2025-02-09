@@ -10,6 +10,7 @@ import {
   isForwardAction
 } from '../types/api';
 import { nodeMap } from './pageCapture';
+import { VisualEffects } from './visualEffects';
 
 export class ActionOperator {
   private page: Page;
@@ -20,6 +21,9 @@ export class ActionOperator {
 
   async executeAction(action: Action): Promise<boolean> {
     try {
+      // Montrer l'état de chargement avant chaque action
+      await VisualEffects.showLoadingState(this.page);
+
       if (isClickAction(action)) {
         const node = nodeMap.get(String(action.args.id));
         if (!node) {
@@ -33,7 +37,14 @@ export class ActionOperator {
           return false;
         }
         
+        const rect = await elementHandle.evaluate((el: Element) => {
+          const {x, y, width, height} = el.getBoundingClientRect();
+          return {x, y, width, height};
+        });
+        await VisualEffects.showClickEffect(this.page, rect.x + rect.width/2, rect.y + rect.height/2);
+        
         await elementHandle.click();
+        
         await this.page.waitForFunction(() => document.readyState !== 'loading');
         return true;
       }
@@ -51,6 +62,13 @@ export class ActionOperator {
           return false;
         }
         await elementHandle.focus();
+        
+        const rect = await elementHandle.evaluate((el: Element) => {
+          const {x, y, height} = el.getBoundingClientRect();
+          return {x, y, height};
+        });
+        await VisualEffects.showInputCursor(this.page, rect.x, rect.y, rect.height);
+        
         await elementHandle.evaluate((el: HTMLInputElement) => {
           el.value = '';
           el.dispatchEvent(new Event('input', { bubbles: true }));

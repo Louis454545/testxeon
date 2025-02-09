@@ -21,7 +21,8 @@
     "activeTab",
     "debugger",
     "tabs",
-    "sidePanel"
+    "sidePanel",
+    "scripting"
   ],
   "background": {
     "chromium:service_worker": "background.ts"

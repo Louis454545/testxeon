@@ -82,3 +82,53 @@
       'calt' 1;
   }
 }
+
+@layer utilities {
+  .cursor-effect {
+    position: absolute;
+    pointer-events: none;
+    z-index: 99999;
+  }
+  
+  .ripple-effect {
+    animation: ripple 0.6s ease-out;
+    border: 2px solid rgba(0, 150, 255, 0.8);
+    border-radius: 50%;
+  }
+  
+  .input-cursor {
+    animation: blink 1s infinite;
+    background-color: rgba(0, 150, 255, 0.8);
+  }
+  
+  @keyframes ripple {
+    from {
+      transform: scale(0.5);
+      opacity: 1;
+    }
+    to {
+      transform: scale(2);
+      opacity: 0;
+    }
+  }
+  
+  @keyframes blink {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0; }
+  }
+
+  @keyframes cursor-pulse {
+    0% { box-shadow: 0 0 0 0 rgba(0, 150, 255, 0.4); }
+    70% { box-shadow: 0 0 0 10px rgba(0, 150, 255, 0); }
+    100% { box-shadow: 0 0 0 0 rgba(0, 150, 255, 0); }
+  }
+
+  #visual-cursor {
+    will-change: transform;
+    backface-visibility: hidden;
+  }
+
+  #visual-cursor.clicking {
+    animation: cursor-pulse 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+  }
+}
