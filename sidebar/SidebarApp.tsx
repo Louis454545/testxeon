@@ -184,8 +184,8 @@ export default function SidebarApp() {
         setMessages(newMessages);
         if (currentConversationId) updateConversation(currentConversationId, newMessages);
 
-        await MessageHandler.executeAction(page, followupResponse);
         const followupSuccess = await MessageHandler.executeAction(page, followupResponse);
+        
         assistantMessage.snapshot!.segments[assistantMessage.snapshot!.segments.length - 1].actions = followupResponse.action.map((action, index) => ({
           action,
           success: followupSuccess[index]
