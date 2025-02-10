@@ -98,7 +98,7 @@ const ActionBadge = ({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 px-3 py-1.5 rounded-full transition-all duration-200",
+        "flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 w-full",
         "border backdrop-blur-[2px]",
         "hover:shadow-[0_4px_8px_-2px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_4px_8px_-2px_rgba(0,0,0,0.3)]",
         "hover:-translate-y-[1px] active:translate-y-0",
@@ -109,29 +109,32 @@ const ActionBadge = ({
         "group/action"
       )}
     >
-      <Icon className={cn(
-        "w-3.5 h-3.5 transition-transform duration-200",
-        config.iconColor,
-        "group-hover/action:scale-110"
-      )} />
-      <span className={cn(
-        "text-xs font-medium truncate max-w-[200px]",
-        "transition-colors duration-200"
-      )}>
-        {truncateText(action.args.description || action.name, MAX_ACTION_DESC_LENGTH)}
-      </span>
-      {isExecuting ? (
-        <Loader2 className={cn(
-          "w-3.5 h-3.5 animate-spin ml-1",
-          config.iconColor
+      <div className="flex items-center gap-2 flex-1">
+        <Icon className={cn(
+          "w-5 h-5 transition-transform duration-200 flex-shrink-0",
+          config.iconColor,
+          "group-hover/action:scale-110"
         )} />
-      ) : (
-        success !== undefined && (
+        <span className={cn(
+          "text-sm font-medium flex-1",
+          "transition-colors duration-200"
+        )}>
+          {action.args.description || action.name}
+        </span>
+      </div>
+      <div className="flex items-center gap-1.5">
+        {isExecuting && (
+          <Loader2 className={cn(
+            "w-5 h-5 animate-spin",
+            config.iconColor
+          )} />
+        )}
+        {success !== undefined && (
           success ? 
-            <Check className="w-3.5 h-3.5 text-green-500 dark:text-green-400 ml-1 animate-fade-scale" /> :
-            <XCircle className="w-3.5 h-3.5 text-red-500 dark:text-red-400 ml-1 animate-fade-scale" />
-        )
-      )}
+            <Check className="w-5 h-5 text-green-500 dark:text-green-400 animate-fade-scale" /> :
+            <XCircle className="w-5 h-5 text-red-500 dark:text-red-400 animate-fade-scale" />
+        )}
+      </div>
     </div>
   );
 };
@@ -139,19 +142,15 @@ const ActionBadge = ({
 export function MessageItem({ message }: MessageItemProps) {
   const components = {
     code({ node, inline, className, children, ...props }) {
-      const match = /language-(\w+)/.exec(className || '')
-      return !inline && match ? (
-        <SyntaxHighlighter
-          style={materialDark}
-          language={match[1]}
-          PreTag="div"
-          className="rounded-lg p-4 my-2"
+      const isMultiline = String(children).includes('\n');
+      return (
+        <code 
+          className={cn(
+            "bg-muted rounded font-mono text-sm",
+            inline ? "px-1.5 py-0.5" : "block p-4 my-2 whitespace-pre-wrap"
+          )} 
           {...props}
         >
-          {String(children).replace(/\n$/, '')}
-        </SyntaxHighlighter>
-      ) : (
-        <code className="bg-muted px-1.5 py-0.5 rounded text-sm" {...props}>
           {children}
         </code>
       )
@@ -177,14 +176,14 @@ export function MessageItem({ message }: MessageItemProps) {
   }
 
   return (
-    <div className="flex flex-col gap-2 mb-4 last:mb-2 group">
+    <div className="flex flex-col gap-1 mb-3 last:mb-2 group">
       <div className={`flex ${message.isUser ? 'justify-end' : 'justify-start'}`}>
         {!message.isUser && message.content === "Thinking..." ? (
           <ThinkingMessage />
         ) : (
           <div
             className={cn(
-              "rounded-2xl px-4 py-3 max-w-[85%]",
+              "rounded-2xl px-3 py-2 max-w-[85%]",
               "transition-all duration-200",
               "border border-border/50 backdrop-blur-sm",
               message.isUser
@@ -194,7 +193,7 @@ export function MessageItem({ message }: MessageItemProps) {
             )}
           >
             {message.snapshot && message.snapshot.segments ? (
-              <div className="space-y-3">
+              <div className="space-y-1.5">
                 {message.snapshot.segments.map((segment, index) => (
                   <div 
                     key={index} 
@@ -221,7 +220,7 @@ export function MessageItem({ message }: MessageItemProps) {
                           </ReactMarkdown>
                         </p>
                         {segment.actions && segment.actions.length > 0 && (
-                          <div className="mt-3 flex flex-wrap gap-2 animate-slide-up">
+                          <div className="mt-2 flex flex-col gap-2 animate-slide-up">
                             {segment.actions.map(({ action, success, isExecuting }, j) => (
                               <ActionBadge 
                                 key={j} 
@@ -246,7 +245,7 @@ export function MessageItem({ message }: MessageItemProps) {
                   {message.content}
                 </p>
                 {!message.isUser && message.snapshot?.action && (
-                  <div className="mt-3 flex flex-wrap gap-2 animate-slide-up">
+                  <div className="mt-2 flex flex-col gap-2 animate-slide-up">
                     {(Array.isArray(message.snapshot.action)
                       ? message.snapshot.action
                       : [message.snapshot.action]
