@@ -2,7 +2,11 @@ import type { ApiResponse, Action } from './api';
 
 interface MessageSegment {
   content: string;
-  actions: Action[];
+  actions: Array<{
+    action: Action;
+    success?: boolean;
+    isExecuting?: boolean;
+  }>;
 }
 
 /**

@@ -222,8 +222,13 @@ export function MessageItem({ message }: MessageItemProps) {
                         </p>
                         {segment.actions && segment.actions.length > 0 && (
                           <div className="mt-3 flex flex-wrap gap-2 animate-slide-up">
-                            {segment.actions.map(({ action, success }, j) => (
-                              <ActionBadge key={j} action={action} success={success} />
+                            {segment.actions.map(({ action, success, isExecuting }, j) => (
+                              <ActionBadge 
+                                key={j} 
+                                action={action} 
+                                success={success}
+                                isExecuting={isExecuting}
+                              />
                             ))}
                           </div>
                         )}
@@ -245,8 +250,13 @@ export function MessageItem({ message }: MessageItemProps) {
                     {(Array.isArray(message.snapshot.action)
                       ? message.snapshot.action
                       : [message.snapshot.action]
-                    ).map(({ action, success }, index) => (
-                      <ActionBadge key={index} action={action} success={success} />
+                    ).map(({ action, success, isExecuting }, index) => (
+                      <ActionBadge 
+                        key={index} 
+                        action={action} 
+                        success={success}
+                        isExecuting={isExecuting}
+                      />
                     ))}
                   </div>
                 )}

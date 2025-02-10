@@ -144,7 +144,8 @@ export default function SidebarApp() {
         content: apiResponse.content,
         actions: apiResponse.action ? [apiResponse.action].flat().map(action => ({
           action,
-          success: undefined
+          success: undefined,
+          isExecuting: true
         })) : []
       };
       newMessages = [...baseMessages, assistantMessage];
@@ -155,7 +156,8 @@ export default function SidebarApp() {
       const actionSuccess = await MessageHandler.executeAction(page, apiResponse);
       assistantMessage.snapshot!.segments[0].actions = apiResponse.action.map((action, index) => ({
         action,
-        success: actionSuccess[index]
+        success: actionSuccess[index],
+        isExecuting: false
       }));
       newMessages = [...baseMessages, assistantMessage];
       setMessages(newMessages);
@@ -180,7 +182,8 @@ export default function SidebarApp() {
           content: followupResponse.content,
           actions: followupResponse.action ? [followupResponse.action].flat().map(action => ({
             action,
-            success: undefined
+            success: undefined,
+            isExecuting: true
           })) : []
         };
         newMessages = [...baseMessages, assistantMessage];
@@ -191,7 +194,8 @@ export default function SidebarApp() {
         
         assistantMessage.snapshot!.segments[assistantMessage.snapshot!.segments.length - 1].actions = followupResponse.action.map((action, index) => ({
           action,
-          success: followupSuccess[index]
+          success: followupSuccess[index],
+          isExecuting: false
         }));
         newMessages = [...baseMessages, assistantMessage];
         setMessages(newMessages);
