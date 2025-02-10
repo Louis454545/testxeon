@@ -10,6 +10,7 @@ import { DebuggerConnectionService } from "./utils/debuggerConnection"
 import { createThinkingMessage } from "./components/ThinkingMessage"
 import { PageCaptureService } from "./utils/pageCapture"
 import './styles.css'
+import { UnsupportedUrlView } from "./components/UnsupportedUrlView"
 
 type View = 'chat' | 'conversations' | 'settings';
 type Theme = 'light' | 'dark' | 'system';
@@ -21,6 +22,7 @@ export default function SidebarApp() {
   const [conversations, setConversations] = useState<Conversation[]>([])
   const [searchQuery, setSearchQuery] = useState("")
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
+  const [isSupportedUrl, setIsSupportedUrl] = useState(true)
 
   // Référence pour gérer l'annulation du processus d'envoi
   const cancelSending = useRef(false);
@@ -37,6 +39,24 @@ export default function SidebarApp() {
       }
     })
   }, [])
+
+  useEffect(() => {
+    const checkUrl = async () => {
+      try {
+        const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
+        const url = tab?.url || '';
+        const allowedProtocols = ['http:', 'https:', 'file:'];
+        setIsSupportedUrl(allowedProtocols.some(p => url.startsWith(p)));
+      } catch (error) {
+        console.error('Error checking URL:', error);
+        setIsSupportedUrl(false);
+      }
+    };
+
+    checkUrl();
+    const interval = setInterval(checkUrl, 1000);
+    return () => clearInterval(interval);
+  }, []);
 
   const handleCancelMessage = () => {
     if (isSending) {
@@ -250,29 +270,37 @@ export default function SidebarApp() {
 
   return (
     <div className="h-full flex flex-col">
-      <Header 
-        onNewConversation={handleNewConversation}
-        onViewConversations={handleViewConversations}
-        onViewSettings={handleViewSettings}
-      />
-      {currentView === 'chat' ? (
+      {isSupportedUrl ? (
         <>
-          <MessageList messages={messages} />
-          <MessageInput 
-            onSubmit={handleSubmitMessage}
-            isSending={isSending}
-            onCancel={handleCancelMessage}
+          <Header 
+            onNewConversation={handleNewConversation}
+            onViewConversations={handleViewConversations}
+            onViewSettings={handleViewSettings}
           />
+          {currentView === 'chat' ? (
+            <>
+              <MessageList messages={messages} />
+              <MessageInput 
+                onSubmit={handleSubmitMessage}
+                isSending={isSending}
+                onCancel={handleCancelMessage}
+              />
+            </>
+          ) : currentView === 'conversations' ? (
+            <ConversationsPage
+              conversations={filteredConversations}
+              onSelectConversation={handleSelectConversation}
+              onDeleteConversation={handleDeleteConversation}
+              onSearch={handleSearch}
+            />
+          ) : (
+            <SettingsPage />
+          )}
         </>
-      ) : currentView === 'conversations' ? (
-        <ConversationsPage
-          conversations={filteredConversations}
-          onSelectConversation={handleSelectConversation}
-          onDeleteConversation={handleDeleteConversation}
-          onSearch={handleSearch}
-        />
       ) : (
-        <SettingsPage />
+        <UnsupportedUrlView onRedirect={() => {
+          chrome.tabs.update({ url: 'https://www.google.com' });
+        }} />
       )}
     </div>
   )
