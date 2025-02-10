@@ -49,6 +49,10 @@ export class VisualEffects {
           height: 30px !important;
           background-color: rgba(100, 100, 100, 0.5) !important;
         }
+        #visual-cursor.keyboard-press {
+          transform: translate(-50%, -50%) scale(1.2);
+          transition: transform 0.1s ease-out;
+        }
       `;
       document.head.appendChild(style);
 
@@ -82,7 +86,7 @@ export class VisualEffects {
   static async showClickEffect(page: any, x: number, y: number) {
     await this.initCursor(page);
     
-    await page.evaluate(({x, y}) => {
+    await page.evaluate(({x, y}: {x: number, y: number}) => {
       const cursor = document.querySelector('#visual-cursor') as HTMLElement;
       if (cursor) {
         // Sauvegarder la nouvelle position
@@ -98,7 +102,7 @@ export class VisualEffects {
   static async showInputCursor(page: any, x: number, y: number, height: number) {
     await this.initCursor(page);
     
-    await page.evaluate(({x, y, height}) => {
+    await page.evaluate(({x, y, height}: {x: number, y: number, height: number}) => {
       const cursor = document.querySelector('#visual-cursor') as HTMLElement;
       if (cursor) {
         // Sauvegarder la nouvelle position
@@ -123,4 +127,40 @@ export class VisualEffects {
       }
     });
   }
-} 
+
+  static async showKeyboardEffect(page: any, key: string) {
+    await this.initCursor(page);
+    
+    await page.evaluate((key: string) => {
+      const cursor = document.querySelector('#visual-cursor') as HTMLElement;
+      if (cursor) {
+        // Position the cursor at the center
+        cursor.style.left = '50%';
+        cursor.style.top = '50%';
+        window._lastCursorPosition = { x: '50%', y: '50%' };
+        
+        // Add key indicator
+        cursor.textContent = key;
+        cursor.style.backgroundColor = 'rgba(0, 150, 255, 0.8)';
+        cursor.style.color = 'white';
+        cursor.style.display = 'flex';
+        cursor.style.alignItems = 'center';
+        cursor.style.justifyContent = 'center';
+        cursor.style.fontSize = '12px';
+        cursor.style.padding = '4px';
+        cursor.style.minWidth = '24px';
+        cursor.style.minHeight = '24px';
+        
+        // Animate
+        cursor.classList.add('keyboard-press');
+        
+        // Reset after animation
+        setTimeout(() => {
+          cursor.textContent = '';
+          cursor.style.backgroundColor = 'rgba(100, 100, 100, 0.9)';
+          cursor.classList.remove('keyboard-press');
+        }, 500);
+      }
+    }, key);
+  }
+}

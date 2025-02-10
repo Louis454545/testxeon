@@ -1,15 +1,16 @@
 import { MessageItemProps } from "../types";
-import { 
-  PencilLine, 
-  MousePointerClick, 
-  Globe, 
-  LayoutGrid, 
-  Check, 
+import {
+  PencilLine,
+  MousePointerClick,
+  Globe,
+  LayoutGrid,
+  Check,
   XCircle,
   Loader2,
   Sparkle,
   ArrowLeft,
-  ArrowRight
+  ArrowRight,
+  Keyboard
 } from "lucide-react";
 import { Action, ActionName } from "../types/api";
 import { ThinkingMessage } from "./ThinkingMessage";
@@ -24,7 +25,15 @@ const truncateText = (text: string, maxLength: number) => {
 };
 
 const getActionConfig = (action: Action) => {
-  const configs = {
+  const configs: Record<ActionName, {
+    icon: any;
+    bgColor: string;
+    textColor: string;
+    borderColor: string;
+    iconColor: string;
+    hoverBg: string;
+    shadowColor: string;
+  }> = {
     [ActionName.INPUT]: {
       icon: PencilLine,
       bgColor: 'bg-blue-50 dark:bg-blue-500/10',
@@ -78,9 +87,18 @@ const getActionConfig = (action: Action) => {
       iconColor: 'text-cyan-600 dark:text-cyan-400',
       hoverBg: 'hover:bg-cyan-100/80 dark:hover:bg-cyan-500/20',
       shadowColor: 'shadow-cyan-500/25'
+    },
+    [ActionName.KEYBOARD]: {
+      icon: Keyboard,
+      bgColor: 'bg-pink-50 dark:bg-pink-500/10',
+      textColor: 'text-pink-700 dark:text-pink-300',
+      borderColor: 'border-pink-200/50 dark:border-pink-400/20',
+      iconColor: 'text-pink-600 dark:text-pink-400',
+      hoverBg: 'hover:bg-pink-100/80 dark:hover:bg-pink-500/20',
+      shadowColor: 'shadow-pink-500/25'
     }
   };
-  return configs[action.name] || configs[ActionName.CLICK];
+  return configs[action.name];
 };
 
 const ActionBadge = ({ 
@@ -141,7 +159,12 @@ const ActionBadge = ({
 
 export function MessageItem({ message }: MessageItemProps) {
   const components = {
-    code({ node, inline, className, children, ...props }) {
+    code({ node, inline, className, children, ...props }: {
+      node?: any;
+      inline?: boolean;
+      className?: string;
+      children: React.ReactNode;
+    }) {
       const isMultiline = String(children).includes('\n');
       return (
         <code 
@@ -155,22 +178,22 @@ export function MessageItem({ message }: MessageItemProps) {
         </code>
       )
     },
-    a({ node, ...props }) {
+    a({ ...props }) {
       return <a className="text-primary underline hover:text-primary/80" {...props} />
     },
-    h1({ node, ...props }) {
+    h1({ ...props }) {
       return <h1 className="text-2xl font-bold mt-4 mb-2" {...props} />
     },
-    h2({ node, ...props }) {
+    h2({ ...props }) {
       return <h2 className="text-xl font-semibold mt-3 mb-1.5" {...props} />
     },
-    ul({ node, ...props }) {
+    ul({ ...props }) {
       return <ul className="list-disc pl-6 my-2" {...props} />
     },
-    ol({ node, ...props }) {
+    ol({ ...props }) {
       return <ol className="list-decimal pl-6 my-2" {...props} />
     },
-    blockquote({ node, ...props }) {
+    blockquote({ ...props }) {
       return <blockquote className="border-l-4 border-muted pl-4 italic" {...props} />
     }
   }
@@ -249,12 +272,12 @@ export function MessageItem({ message }: MessageItemProps) {
                     {(Array.isArray(message.snapshot.action)
                       ? message.snapshot.action
                       : [message.snapshot.action]
-                    ).map(({ action, success, isExecuting }, index) => (
-                      <ActionBadge 
-                        key={index} 
-                        action={action} 
-                        success={success}
-                        isExecuting={isExecuting}
+                    ).map((action, index) => (
+                      <ActionBadge
+                        key={index}
+                        action={action}
+                        success={undefined}
+                        isExecuting={false}
                       />
                     ))}
                   </div>

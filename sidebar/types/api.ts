@@ -17,7 +17,8 @@ export enum ActionName {
   NAVIGATE = 'navigate',
   SWITCH_TAB = 'switch_tab',
   BACK = 'back',
-  FORWARD = 'forward'
+  FORWARD = 'forward',
+  KEYBOARD = 'keyboard'
 }
 
 /**
@@ -96,14 +97,25 @@ export interface ForwardAction extends ActionBase {
 }
 
 /**
+ * Keyboard action
+ */
+export interface KeyboardAction extends ActionBase {
+  name: ActionName.KEYBOARD;
+  args: {
+    keys: string;
+    description?: string;
+  };
+}
+
+/**
  * Union type of all possible actions
  */
-export type Action = ClickAction | InputAction | NavigateAction | SwitchTabAction | BackAction | ForwardAction;
+export type Action = ClickAction | InputAction | NavigateAction | SwitchTabAction | BackAction | ForwardAction | KeyboardAction;
 
 /**
  * Type guards for actions
  */
-export const isClickAction = (action: Action): action is ClickAction => 
+export const isClickAction = (action: Action): action is ClickAction =>
   action.name === ActionName.CLICK;
 
 export const isInputAction = (action: Action): action is InputAction =>
@@ -120,6 +132,9 @@ export const isBackAction = (action: Action): action is BackAction =>
 
 export const isForwardAction = (action: Action): action is ForwardAction =>
   action.name === ActionName.FORWARD;
+
+export const isKeyboardAction = (action: Action): action is KeyboardAction =>
+  action.name === ActionName.KEYBOARD;
 
 /**
  * Complete payload structure for API communication

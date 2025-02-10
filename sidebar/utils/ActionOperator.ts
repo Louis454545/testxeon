@@ -1,13 +1,14 @@
 import type { Page } from 'puppeteer-core/lib/types';
-import { 
-  Action, 
+import {
+  Action,
   ActionName,
   isClickAction,
   isInputAction,
   isNavigateAction,
   isSwitchTabAction,
   isBackAction,
-  isForwardAction
+  isForwardAction,
+  isKeyboardAction
 } from '../types/api';
 import { nodeMap } from './pageCapture';
 import { VisualEffects } from './visualEffects';
@@ -100,13 +101,37 @@ export class ActionOperator {
         await this.page.waitForFunction(() => document.readyState !== 'loading');
         return true;
       }
+if (isForwardAction(action)) {
+  await this.page.goForward();
+  await this.page.waitForFunction(() => document.readyState !== 'loading');
+  return true;
+}
 
-      if (isForwardAction(action)) {
-        await this.page.goForward();
-        await this.page.waitForFunction(() => document.readyState !== 'loading');
-        return true;
-      }
+if (isKeyboardAction(action)) {
+  try {
+    const validKeys = [
+      'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
+      'Backspace', 'Delete', 'Tab', 'End', 'Home', 'Insert', 'PageUp', 'PageDown',
+      'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'
+    ];
+    
+    if (!validKeys.includes(action.args.keys)) {
+      console.error(`Invalid keyboard key: ${action.args.keys}`);
+      return false;
+    }
+    
+    await VisualEffects.showKeyboardEffect(this.page, action.args.keys);
+    await this.page.keyboard.press(action.args.keys as any);
+    await this.page.waitForFunction(() => document.readyState !== 'loading');
+    await VisualEffects.showLoadingState(this.page);
+    return true;
+  } catch (error) {
+    console.error('Error executing keyboard action:', error);
+    return false;
+  }
+}
 
+console.error(`Unsupported action type: ${JSON.stringify(action)}`);
       console.error(`Unsupported action type: ${JSON.stringify(action)}`);
       return false;
     } catch (error) {
