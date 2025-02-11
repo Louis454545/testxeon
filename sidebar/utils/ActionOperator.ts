@@ -1,4 +1,4 @@
-import type { Page } from 'puppeteer-core/lib/types';
+import type { Page } from "puppeteer-core/lib/types";
 import {
   Action,
   ActionName,
@@ -8,10 +8,10 @@ import {
   isSwitchTabAction,
   isBackAction,
   isForwardAction,
-  isKeyboardAction
-} from '../types/api';
-import { nodeMap } from './pageCapture';
-import { VisualEffects } from './visualEffects';
+  isKeyboardAction,
+} from "../types/api";
+import { nodeMap } from "./pageCapture";
+import { VisualEffects } from "./visualEffects";
 
 export class ActionOperator {
   private page: Page;
@@ -34,19 +34,28 @@ export class ActionOperator {
 
         const elementHandle = await node.elementHandle();
         if (!elementHandle) {
-          console.error('Failed to get element handle');
+          console.error("Failed to get element handle");
           return false;
         }
-        
+
         const rect = await elementHandle.evaluate((el: Element) => {
-          const {x, y, width, height} = el.getBoundingClientRect();
-          return {x, y, width, height};
+          const { x, y, width, height } = el.getBoundingClientRect();
+          return { x, y, width, height };
         });
-        await VisualEffects.showClickEffect(this.page, rect.x + rect.width/2, rect.y + rect.height/2);
-        
+        // Hover le bouton avant de le clicker
+        await elementHandle.hover();
+  
+        await VisualEffects.showClickEffect(
+          this.page,
+          rect.x + rect.width / 2,
+          rect.y + rect.height / 2
+        );
+
         await elementHandle.click();
-        
-        await this.page.waitForFunction(() => document.readyState !== 'loading');
+
+        await this.page.waitForFunction(
+          () => document.readyState !== "loading"
+        );
         return true;
       }
 
@@ -59,83 +68,89 @@ export class ActionOperator {
 
         const elementHandle = await node.elementHandle();
         if (!elementHandle) {
-          console.error('Failed to get element handle');
+          console.error("Failed to get element handle");
           return false;
         }
         await elementHandle.focus();
-        
+
         const rect = await elementHandle.evaluate((el: Element) => {
-          const {x, y, height} = el.getBoundingClientRect();
-          return {x, y, height};
+          const { x, y, height } = el.getBoundingClientRect();
+          return { x, y, height };
         });
-        await VisualEffects.showInputCursor(this.page, rect.x, rect.y, rect.height);
-        
+        await VisualEffects.showInputCursor(
+          this.page,
+          rect.x,
+          rect.y,
+          rect.height
+        );
+
         await elementHandle.evaluate((el: HTMLInputElement) => {
-          el.value = '';
-          el.dispatchEvent(new Event('input', { bubbles: true }));
+          el.value = "";
+          el.dispatchEvent(new Event("input", { bubbles: true }));
         });
-        
+
         await elementHandle.type(action.args.text);
-        await this.page.waitForFunction(() => document.readyState !== 'loading');
+        await this.page.waitForFunction(
+          () => document.readyState !== "loading"
+        );
         return true;
       }
 
       if (isNavigateAction(action)) {
         await this.page.goto(action.args.url);
-        await this.page.waitForFunction(() => document.readyState !== 'loading');
+        await this.page.waitForFunction(
+          () => document.readyState !== "loading"
+        );
         return true;
       }
 
       if (isSwitchTabAction(action)) {
         try {
-          await chrome.tabs.update(parseInt(action.args.tab_id), { active: true });
+          await chrome.tabs.update(parseInt(action.args.tab_id), {
+            active: true,
+          });
           return true;
         } catch (error) {
-          console.error('Error switching tab:', error);
+          console.error("Error switching tab:", error);
           return false;
         }
       }
 
       if (isBackAction(action)) {
         await this.page.goBack();
-        await this.page.waitForFunction(() => document.readyState !== 'loading');
+        await this.page.waitForFunction(
+          () => document.readyState !== "loading"
+        );
         return true;
       }
-if (isForwardAction(action)) {
-  await this.page.goForward();
-  await this.page.waitForFunction(() => document.readyState !== 'loading');
-  return true;
-}
+      if (isForwardAction(action)) {
+        await this.page.goForward();
+        await this.page.waitForFunction(
+          () => document.readyState !== "loading"
+        );
+        return true;
+      }
 
-if (isKeyboardAction(action)) {
-  try {
-    const validKeys = [
-      'Enter', 'Escape', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown',
-      'Backspace', 'Delete', 'Tab', 'End', 'Home', 'Insert', 'PageUp', 'PageDown',
-      'F1', 'F2', 'F3', 'F4', 'F5', 'F6', 'F7', 'F8', 'F9', 'F10', 'F11', 'F12'
-    ];
-    
-    if (!validKeys.includes(action.args.keys)) {
-      console.error(`Invalid keyboard key: ${action.args.keys}`);
-      return false;
-    }
-    
-    await VisualEffects.showKeyboardEffect(this.page, action.args.keys);
-    await this.page.keyboard.press(action.args.keys as any);
-    await this.page.waitForFunction(() => document.readyState !== 'loading');
-    await VisualEffects.showLoadingState(this.page);
-    return true;
-  } catch (error) {
-    console.error('Error executing keyboard action:', error);
-    return false;
-  }
-}
+      if (isKeyboardAction(action)) {
+        try {
+          await VisualEffects.showKeyboardEffect(this.page, action.args.keys);
+          await this.page.keyboard.press(action.args.keys as any);
+          await this.page.waitForFunction(
+            () => document.readyState !== "loading"
+          );
+          await VisualEffects.showLoadingState(this.page);
+          return true;
+        } catch (error) {
+          console.error("Error executing keyboard action:", error);
+          return false;
+        }
+      }
 
-console.error(`Unsupported action type: ${JSON.stringify(action)}`);
+      console.error(`Unsupported action type: ${JSON.stringify(action)}`);
       console.error(`Unsupported action type: ${JSON.stringify(action)}`);
       return false;
     } catch (error) {
-      console.error('Error executing action:', error);
+      console.error("Error executing action:", error);
       return false;
     }
   }
