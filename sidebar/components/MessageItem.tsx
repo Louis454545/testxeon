@@ -104,11 +104,13 @@ const getActionConfig = (action: Action) => {
 const ActionBadge = ({ 
   action, 
   isExecuting,
-  success
+  success,
+  className
 }: { 
   action: Action; 
   isExecuting?: boolean;
   success?: boolean;
+  className?: string;
 }) => {
   const config = getActionConfig(action);
   const Icon = config.icon;
@@ -116,15 +118,12 @@ const ActionBadge = ({
   return (
     <div
       className={cn(
-        "flex items-center gap-2 px-3 py-2 rounded-lg transition-all duration-200 w-full",
-        "border backdrop-blur-[2px]",
-        "hover:shadow-[0_4px_8px_-2px_rgba(0,0,0,0.12)] dark:hover:shadow-[0_4px_8px_-2px_rgba(0,0,0,0.3)]",
-        "hover:-translate-y-[1px] active:translate-y-0",
+        "flex items-center gap-2 px-3 py-2",
+        "rounded-lg border transition-all duration-200",
+        "w-full",
         config.bgColor,
-        config.textColor,
         config.borderColor,
-        config.hoverBg,
-        "group/action"
+        className
       )}
     >
       <div className="flex items-center gap-2 flex-1">
@@ -243,13 +242,14 @@ export function MessageItem({ message }: MessageItemProps) {
                           </ReactMarkdown>
                         </p>
                         {segment.actions && segment.actions.length > 0 && (
-                          <div className="mt-2 flex flex-col gap-2 animate-slide-up">
+                          <div className="mt-2 flex flex-col gap-2 animate-slide-up w-full">
                             {segment.actions.map(({ action, success, isExecuting }, j) => (
                               <ActionBadge 
                                 key={j} 
                                 action={action} 
                                 success={success}
                                 isExecuting={isExecuting}
+                                className="w-full"
                               />
                             ))}
                           </div>

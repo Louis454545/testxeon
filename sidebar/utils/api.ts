@@ -32,43 +32,35 @@ export async function sendToApi(
   screenshot: string,
   userMessage?: string,
   conversationId: string | null = null,
-  lastActionResults?: boolean[]
+  toolsResults: Array<{ tool_call_id: string; content: string }> = []
 ): Promise<ApiResponse> {
-  try {
-    const allTabs = await getAllTabs();
+  const allTabs = await getAllTabs();
 
-    // Build base payload
-    const payload: Partial<ApiPayload> = {
-      context: JSON.stringify(snapshot),
-      image: screenshot,
-      last_action_success: lastActionResults?.some(r => r) || false,
-      tabs: allTabs,
-      conversation_id: conversationId,
-      tool_results: null
-    };
+  const payload: ApiPayload = {
+    context: JSON.stringify(snapshot),
+    image: screenshot,
+    tabs: allTabs,
+    conversation_id: conversationId,
+    tool_results: toolsResults.length > 0 ? toolsResults : null
+  };
 
-    // Only add message if user provided one
-    if (userMessage) {
-      payload.message = userMessage;
-    }
-
-    const response = await fetch(API_ENDPOINTS.message, {
-      method: 'POST',
-      headers: {
-        'Content-Type': 'application/json',
-      },
-      body: JSON.stringify(payload),
-    });
-
-    if (!response.ok) {
-      throw new Error(`API request failed with status ${response.status}`);
-    }
-
-    return await response.json();
-  } catch (error) {
-    console.error('Error sending data to API:', error);
-    throw error;
+  if (userMessage) {
+    payload.message = userMessage;
   }
+
+  const response = await fetch(API_ENDPOINTS.message, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(payload),
+  });
+
+  if (!response.ok) {
+    throw new Error(`API request failed with status ${response.status}`);
+  }
+
+  return await response.json();
 }
 
 /**

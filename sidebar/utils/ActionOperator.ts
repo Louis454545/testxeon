@@ -54,7 +54,7 @@ export class ActionOperator {
         await elementHandle.click();
 
         await this.page.waitForFunction(
-          () => document.readyState !== "loading"
+          () => document.readyState === "complete"
         );
         return true;
       }
@@ -91,7 +91,7 @@ export class ActionOperator {
 
         await elementHandle.type(action.args.text);
         await this.page.waitForFunction(
-          () => document.readyState !== "loading"
+          () => document.readyState === "complete"
         );
         return true;
       }
@@ -99,7 +99,7 @@ export class ActionOperator {
       if (isNavigateAction(action)) {
         await this.page.goto(action.args.url);
         await this.page.waitForFunction(
-          () => document.readyState !== "loading"
+          () => document.readyState === "complete"
         );
         return true;
       }
@@ -119,14 +119,14 @@ export class ActionOperator {
       if (isBackAction(action)) {
         await this.page.goBack();
         await this.page.waitForFunction(
-          () => document.readyState !== "loading"
+          () => document.readyState === "complete"
         );
         return true;
       }
       if (isForwardAction(action)) {
         await this.page.goForward();
         await this.page.waitForFunction(
-          () => document.readyState !== "loading"
+          () => document.readyState === "complete"
         );
         return true;
       }
@@ -136,7 +136,7 @@ export class ActionOperator {
           await VisualEffects.showKeyboardEffect(this.page, action.args.keys);
           await this.page.keyboard.press(action.args.keys as any);
           await this.page.waitForFunction(
-            () => document.readyState !== "loading"
+            () => document.readyState === "complete"
           );
           await VisualEffects.showLoadingState(this.page);
           return true;

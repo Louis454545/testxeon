@@ -149,9 +149,6 @@ export interface ApiPayload {
   /** Base64 encoded screenshot */
   image: string;
   
-  /** Status of the last performed action */
-  last_action_success: boolean;
-  
   /** List of open browser tabs */
   tabs: Tab[];
 
@@ -159,7 +156,10 @@ export interface ApiPayload {
   conversation_id: string | null;
 
   /** Results from previous tool execution */
-  tool_results: any | null;
+  tool_results: Array<{
+    tool_call_id: string;
+    content: string;
+  }> | null;
 }
 
 /**
@@ -173,5 +173,9 @@ export interface ApiResponse {
   content: string;
   
   /** Actions to be executed on the page */
-  action: Action[];
+  action: Array<{
+    name: ActionName;
+    args: any;
+    tool_call_id: string;
+  }>;
 }

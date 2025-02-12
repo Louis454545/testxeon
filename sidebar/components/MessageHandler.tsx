@@ -14,7 +14,7 @@ export class MessageHandler {
   static async getApiResponse(
     content: string | undefined = undefined,
     existingPage: any = null,
-    lastActionResults: boolean[] = []
+    toolsResults: Array<{ tool_call_id: string; content: string }> = []
   ): Promise<[ApiResponse, any, any]> {
     let page;
     let browser;
@@ -41,7 +41,7 @@ export class MessageHandler {
         pageData.screenshot,
         content,
         this.currentConversationId,
-        lastActionResults
+        toolsResults
       );
 
       this.currentConversationId = apiResponse.conversation_id;
@@ -57,20 +57,28 @@ export class MessageHandler {
     }
   }
 
-  static async executeAction(page: any, apiResponse: ApiResponse): Promise<boolean[]> {
+  static async executeAction(page: any, apiResponse: ApiResponse) {
     if (apiResponse.action) {
       const actionOperator = new ActionOperator(page);
-      try {
-        const results: boolean[] = [];
-        for (const action of apiResponse.action) {
+      const results = [];
+      
+      for (const action of apiResponse.action) {
+        try {
+          // Ajouter l'exécution de l'action et récupérer le résultat
           const success = await actionOperator.executeAction(action);
-          results.push(success);
+          results.push({
+            tool_call_id: action.tool_call_id,
+            content: success ? "Action exécutée avec succès" : "Échec de l'action"
+          });
+        } catch (error) {
+          results.push({
+            tool_call_id: action.tool_call_id,
+            content: `Erreur: ${error instanceof Error ? error.message : 'Inconnue'}`
+          });
         }
-        return results;
-      } catch (error) {
-        console.error('Error executing action:', error);
-        return apiResponse.action.map(() => false);
       }
+      
+      return results;
     }
     return [];
   }
@@ -99,6 +107,22 @@ export class MessageHandler {
       await DebuggerConnectionService.disconnect(this.currentBrowser);
       this.currentPage = null;
       this.currentBrowser = null;
+    }
+  }
+
+  static async executeSingleAction(page: any, action: any) {
+    const actionOperator = new ActionOperator(page);
+    try {
+      const success = await actionOperator.executeAction(action);
+      return {
+        tool_call_id: action.tool_call_id,
+        content: success ? "Action exécutée avec succès" : "Échec de l'action"
+      };
+    } catch (error) {
+      return {
+        tool_call_id: action.tool_call_id,
+        content: `Erreur: ${error instanceof Error ? error.message : 'Inconnue'}`
+      };
     }
   }
 }

@@ -151,79 +151,103 @@ export default function SidebarApp() {
     if (currentConversationId) updateConversation(currentConversationId, newMessages);
 
     try {
-      const [apiResponse, page, browser] = await MessageHandler.getApiResponse(content, null, []);
-      if (cancelSending.current) {
-        // Annuler sans déconnecter
-        setMessages(baseMessages);
-        if (currentConversationId) updateConversation(currentConversationId, baseMessages);
-        return;
-      }
+      const [apiResponse, page, browser] = await MessageHandler.getApiResponse(content);
       
       // Met à jour le premier segment avec la réponse
       assistantMessage.snapshot!.segments[0] = {
         content: apiResponse.content,
-        actions: apiResponse.action ? [apiResponse.action].flat().map(action => ({
+        actions: apiResponse.action.map(action => ({
           action,
           success: undefined,
           isExecuting: true
-        })) : []
+        }))
       };
       newMessages = [...baseMessages, assistantMessage];
       setMessages(newMessages);
       if (currentConversationId) updateConversation(currentConversationId, newMessages);
+      
+      // Exécution séquentielle des actions
+      let actionResults = [];
+      for (const [index, action] of apiResponse.action.entries()) {
+        // Met à jour l'état d'exécution pour cette action uniquement
+        assistantMessage.snapshot!.segments[0].actions[index].isExecuting = true;
+        newMessages = [...baseMessages, assistantMessage];
+        setMessages(newMessages);
+        
+        // Exécute l'action une par une
+        const result = await MessageHandler.executeSingleAction(page, action);
+        actionResults.push(result);
+        
+        // Met à jour le résultat immédiatement
+        assistantMessage.snapshot!.segments[0].actions[index] = {
+          action,
+          success: result.content.includes("succès"),
+          isExecuting: false
+        };
+        newMessages = [...baseMessages, assistantMessage];
+        setMessages(newMessages);
+        if (currentConversationId) updateConversation(currentConversationId, newMessages);
+        
+        // Pause visuelle entre les actions
+        await new Promise(resolve => setTimeout(resolve, 300));
+      }
 
-      // Exécution des actions de la réponse initiale
-      const actionSuccess = await MessageHandler.executeAction(page, apiResponse);
-      assistantMessage.snapshot!.segments[0].actions = apiResponse.action.map((action, index) => ({
-        action,
-        success: actionSuccess[index],
-        isExecuting: false
-      }));
-      newMessages = [...baseMessages, assistantMessage];
-      setMessages(newMessages);
-      if (currentConversationId) updateConversation(currentConversationId, newMessages);
-
+      // Boucle de suivi
       let lastResponse = apiResponse;
-      while (!cancelSending.current) {
-        if (!lastResponse.action || lastResponse.action.length === 0) {
-          break; // Stop if no actions are returned
-        }
+      while (!cancelSending.current && lastResponse.action && lastResponse.action.length > 0) {
         // Ajoute un nouveau segment "Thinking..." pour le follow-up
         assistantMessage.snapshot!.segments.push({ content: "Thinking...", actions: [] });
         newMessages = [...baseMessages, assistantMessage];
         setMessages(newMessages);
         if (currentConversationId) updateConversation(currentConversationId, newMessages);
 
-        const [followupResponse] = await MessageHandler.getApiResponse(undefined, page, actionSuccess);
+        const [followupResponse] = await MessageHandler.getApiResponse(
+          undefined, 
+          page, 
+          actionResults
+        );
+        
         if (cancelSending.current) break;
 
         // Remplace le dernier "Thinking..." par la réponse
         assistantMessage.snapshot!.segments[assistantMessage.snapshot!.segments.length - 1] = {
           content: followupResponse.content,
-          actions: followupResponse.action ? [followupResponse.action].flat().map(action => ({
+          actions: followupResponse.action.map(action => ({
             action,
             success: undefined,
             isExecuting: true
-          })) : []
+          }))
         };
         newMessages = [...baseMessages, assistantMessage];
         setMessages(newMessages);
         if (currentConversationId) updateConversation(currentConversationId, newMessages);
-
-        const followupSuccess = await MessageHandler.executeAction(page, followupResponse);
         
-        assistantMessage.snapshot!.segments[assistantMessage.snapshot!.segments.length - 1].actions = followupResponse.action.map((action, index) => ({
-          action,
-          success: followupSuccess[index],
-          isExecuting: false
-        }));
-        newMessages = [...baseMessages, assistantMessage];
-        setMessages(newMessages);
-        if (currentConversationId) updateConversation(currentConversationId, newMessages);
-
+        // Exécution séquentielle des nouvelles actions
+        let followupResults = [];
+        for (const [index, action] of followupResponse.action.entries()) {
+          const lastSegment = assistantMessage.snapshot!.segments[assistantMessage.snapshot!.segments.length - 1];
+          lastSegment.actions[index].isExecuting = true;
+          newMessages = [...baseMessages, assistantMessage];
+          setMessages(newMessages);
+          
+          const result = await MessageHandler.executeSingleAction(page, action);
+          followupResults.push(result);
+          
+          lastSegment.actions[index] = {
+            action,
+            success: result.content.includes("succès"),
+            isExecuting: false
+          };
+          newMessages = [...baseMessages, assistantMessage];
+          setMessages(newMessages);
+          if (currentConversationId) updateConversation(currentConversationId, newMessages);
+          
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
+        
         lastResponse = followupResponse;
+        actionResults = followupResults;
       }
-
     } catch (error) {
       console.error('Error processing message:', error);
       assistantMessage.snapshot!.segments.push({
