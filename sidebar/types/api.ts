@@ -18,7 +18,8 @@ export enum ActionName {
   SWITCH_TAB = 'switch_tab',
   BACK = 'back',
   FORWARD = 'forward',
-  KEYBOARD = 'keyboard'
+  KEYBOARD = 'keyboard',
+  WAIT = 'wait'
 }
 
 /**
@@ -108,9 +109,20 @@ export interface KeyboardAction extends ActionBase {
 }
 
 /**
+ * Wait action
+ */
+export interface WaitAction extends ActionBase {
+  name: ActionName.WAIT;
+  args: {
+    duration: number;
+    description?: string;
+  };
+}
+
+/**
  * Union type of all possible actions
  */
-export type Action = ClickAction | InputAction | NavigateAction | SwitchTabAction | BackAction | ForwardAction | KeyboardAction;
+export type Action = ClickAction | InputAction | NavigateAction | SwitchTabAction | BackAction | ForwardAction | KeyboardAction | WaitAction;
 
 /**
  * Type guards for actions
@@ -135,6 +147,9 @@ export const isForwardAction = (action: Action): action is ForwardAction =>
 
 export const isKeyboardAction = (action: Action): action is KeyboardAction =>
   action.name === ActionName.KEYBOARD;
+
+export const isWaitAction = (action: Action): action is WaitAction =>
+  action.name === ActionName.WAIT;
 
 /**
  * Complete payload structure for API communication

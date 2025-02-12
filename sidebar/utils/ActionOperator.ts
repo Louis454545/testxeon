@@ -9,6 +9,7 @@ import {
   isBackAction,
   isForwardAction,
   isKeyboardAction,
+  isWaitAction
 } from "../types/api";
 import { nodeMap } from "./pageCapture";
 import { VisualEffects } from "./visualEffects";
@@ -54,7 +55,8 @@ export class ActionOperator {
         await elementHandle.click();
 
         await this.page.waitForFunction(
-          () => document.readyState === "complete"
+          () => document.readyState === "complete",
+          { timeout: 10000 }
         );
         return true;
       }
@@ -91,7 +93,8 @@ export class ActionOperator {
 
         await elementHandle.type(action.args.text);
         await this.page.waitForFunction(
-          () => document.readyState === "complete"
+          () => document.readyState === "complete",
+          { timeout: 10000 }
         );
         return true;
       }
@@ -99,7 +102,8 @@ export class ActionOperator {
       if (isNavigateAction(action)) {
         await this.page.goto(action.args.url);
         await this.page.waitForFunction(
-          () => document.readyState === "complete"
+          () => document.readyState === "complete",
+          { timeout: 10000 }
         );
         return true;
       }
@@ -119,14 +123,16 @@ export class ActionOperator {
       if (isBackAction(action)) {
         await this.page.goBack();
         await this.page.waitForFunction(
-          () => document.readyState === "complete"
+          () => document.readyState === "complete",
+          { timeout: 10000 }
         );
         return true;
       }
       if (isForwardAction(action)) {
         await this.page.goForward();
         await this.page.waitForFunction(
-          () => document.readyState === "complete"
+          () => document.readyState === "complete",
+          { timeout: 10000 }
         );
         return true;
       }
@@ -136,7 +142,8 @@ export class ActionOperator {
           await VisualEffects.showKeyboardEffect(this.page, action.args.keys);
           await this.page.keyboard.press(action.args.keys as any);
           await this.page.waitForFunction(
-            () => document.readyState === "complete"
+            () => document.readyState === "complete",
+            { timeout: 10000 }
           );
           await VisualEffects.showLoadingState(this.page);
           return true;
@@ -146,7 +153,12 @@ export class ActionOperator {
         }
       }
 
-      console.error(`Unsupported action type: ${JSON.stringify(action)}`);
+      if (isWaitAction(action)) {
+        const waitTime = action.args.duration;
+        await new Promise(resolve => setTimeout(resolve, waitTime));
+        return true;
+      }
+
       console.error(`Unsupported action type: ${JSON.stringify(action)}`);
       return false;
     } catch (error) {

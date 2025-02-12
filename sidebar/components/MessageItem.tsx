@@ -10,12 +10,14 @@ import {
   Sparkle,
   ArrowLeft,
   ArrowRight,
-  Keyboard
+  Keyboard,
+  Clock
 } from "lucide-react";
 import { Action, ActionName } from "../types/api";
 import { ThinkingMessage } from "./ThinkingMessage";
 import { cn } from "@/lib/utils";
 import ReactMarkdown from 'react-markdown'
+import React from 'react';
 
 const MAX_ACTION_DESC_LENGTH = 31; // Limite pour la description de l'action
 
@@ -96,6 +98,15 @@ const getActionConfig = (action: Action) => {
       iconColor: 'text-pink-600 dark:text-pink-400',
       hoverBg: 'hover:bg-pink-100/80 dark:hover:bg-pink-500/20',
       shadowColor: 'shadow-pink-500/25'
+    },
+    [ActionName.WAIT]: {
+      icon: Clock,
+      bgColor: 'bg-gray-50 dark:bg-gray-500/10',
+      textColor: 'text-gray-700 dark:text-gray-300',
+      borderColor: 'border-gray-200/50 dark:border-gray-400/20',
+      iconColor: 'text-gray-600 dark:text-gray-400',
+      hoverBg: 'hover:bg-gray-100/80 dark:hover:bg-gray-500/20',
+      shadowColor: 'shadow-gray-500/25'
     }
   };
   return configs[action.name];
@@ -115,6 +126,28 @@ const ActionBadge = ({
   const config = getActionConfig(action);
   const Icon = config.icon;
 
+  // Ajout d'un state et d'un effet pour gérer le compte à rebours pour l'action WAIT
+  const [remainingSeconds, setRemainingSeconds] = React.useState<number | null>(null);
+  
+  React.useEffect(() => {
+    if (isExecuting && action.name === ActionName.WAIT) {
+      const totalSeconds = Math.ceil(action.args.duration / 1000);
+      setRemainingSeconds(totalSeconds);
+      const interval = setInterval(() => {
+        setRemainingSeconds(prev => {
+          if (prev === null) return null;
+          const next = prev - 1;
+          if (next <= 0) {
+            clearInterval(interval);
+            return 0;
+          }
+          return next;
+        });
+      }, 1000);
+      return () => clearInterval(interval);
+    }
+  }, [isExecuting, action]);
+  
   return (
     <div
       className={cn(
@@ -140,12 +173,13 @@ const ActionBadge = ({
         </span>
       </div>
       <div className="flex items-center gap-1.5">
-        {isExecuting && (
-          <Loader2 className={cn(
-            "w-5 h-5 animate-spin",
-            config.iconColor
-          )} />
-        )}
+        {isExecuting && action.name === ActionName.WAIT ? (
+          <span className={cn("text-sm font-medium", config.iconColor)}>
+            {remainingSeconds !== null ? `${remainingSeconds}s` : ''}
+          </span>
+        ) : isExecuting ? (
+          <Loader2 className={cn("w-5 h-5 animate-spin", config.iconColor)} />
+        ) : null}
         {success !== undefined && (
           success ? 
             <Check className="w-5 h-5 text-green-500 dark:text-green-400 animate-fade-scale" /> :
