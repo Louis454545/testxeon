@@ -58,6 +58,7 @@ export class ActionOperator {
           () => document.readyState === "complete",
           { timeout: 10000 }
         );
+        await new Promise(resolve => setTimeout(resolve, 1000));
         return true;
       }
 
@@ -96,6 +97,7 @@ export class ActionOperator {
           () => document.readyState === "complete",
           { timeout: 10000 }
         );
+        await new Promise(resolve => setTimeout(resolve, 1000));
         return true;
       }
 
@@ -105,6 +107,7 @@ export class ActionOperator {
           () => document.readyState === "complete",
           { timeout: 10000 }
         );
+        await new Promise(resolve => setTimeout(resolve, 1000));
         return true;
       }
 
@@ -113,6 +116,7 @@ export class ActionOperator {
           await chrome.tabs.update(parseInt(action.args.tab_id), {
             active: true,
           });
+          await new Promise(resolve => setTimeout(resolve, 1000));
           return true;
         } catch (error) {
           console.error("Error switching tab:", error);
@@ -126,6 +130,7 @@ export class ActionOperator {
           () => document.readyState === "complete",
           { timeout: 10000 }
         );
+        await new Promise(resolve => setTimeout(resolve, 1000));
         return true;
       }
       if (isForwardAction(action)) {
@@ -134,6 +139,7 @@ export class ActionOperator {
           () => document.readyState === "complete",
           { timeout: 10000 }
         );
+        await new Promise(resolve => setTimeout(resolve, 1000));
         return true;
       }
 
@@ -146,6 +152,7 @@ export class ActionOperator {
             { timeout: 10000 }
           );
           await VisualEffects.showLoadingState(this.page);
+          await new Promise(resolve => setTimeout(resolve, 1000));
           return true;
         } catch (error) {
           console.error("Error executing keyboard action:", error);
@@ -156,6 +163,7 @@ export class ActionOperator {
       if (isWaitAction(action)) {
         const waitTime = action.args.duration;
         await new Promise(resolve => setTimeout(resolve, waitTime));
+        await new Promise(resolve => setTimeout(resolve, 1000));
         return true;
       }
 
