@@ -6,9 +6,6 @@ import { ConversationsPage } from "./components/ConversationsPage"
 import { SettingsPage } from "./components/SettingsPage"
 import { Message, Conversation, createMessage } from "./types"
 import { MessageHandler } from "./components/MessageHandler"
-import { DebuggerConnectionService } from "./utils/debuggerConnection"
-import { createThinkingMessage } from "./components/ThinkingMessage"
-import { PageCaptureService } from "./utils/pageCapture"
 import './styles.css'
 import { UnsupportedUrlView } from "./components/UnsupportedUrlView"
 
