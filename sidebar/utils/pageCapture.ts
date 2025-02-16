@@ -45,7 +45,7 @@ export class PageCaptureService {
     const screenshot = await page.screenshot({
       encoding: 'base64',
       type: 'png',
-      fullPage: true,
+      //fullPage: true,
     });
 
     // Supprimer les bounding boxes après la capture
