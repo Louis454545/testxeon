@@ -4,20 +4,20 @@ import { DebuggerConnectionService } from '../utils/debuggerConnection';
 import { PageCaptureService } from '../utils/pageCapture';
 import { ActionOperator } from '../utils/ActionOperator';
 import { sendToApi } from '../utils/api';
-import { Browser, Page } from 'puppeteer';
+import type { Browser as CoreBrowser, Page as CorePage } from 'puppeteer-core';
 
 export class MessageHandler {
   private static currentConversationId: string | null = null;
-  private static currentBrowser: Browser | null = null;
-  private static currentPage: Page | null = null;
+  private static currentBrowser: CoreBrowser | null = null;
+  private static currentPage: CorePage | null = null;
 
   static async getApiResponse(
     content: string | undefined = undefined,
-    existingPage: any = null,
-    toolsResults: Array<{ tool_call_id: string; content: string }> = []
-  ): Promise<[ApiResponse, any, any]> {
-    let page;
-    let browser;
+    existingPage: CorePage | null = null,
+    actionResults: Array<{ success: boolean; description: string }> = []
+  ): Promise<[ApiResponse, CorePage, CoreBrowser | null]> {
+    let page: CorePage;
+    let browser: CoreBrowser | null = null;
     let shouldDisconnect = false;
     
     try {
@@ -29,10 +29,11 @@ export class MessageHandler {
         browser = this.currentBrowser;
       } else {
         const connection = await DebuggerConnectionService.connect();
-        page = connection.page;
-        browser = connection.browser;
+        page = connection.page as CorePage;
+        browser = connection.browser as CoreBrowser;
         this.currentPage = page;
         this.currentBrowser = browser;
+        shouldDisconnect = true;
       }
 
       const pageData = await PageCaptureService.capturePageData(page);
@@ -40,8 +41,7 @@ export class MessageHandler {
         pageData.accessibility,
         pageData.screenshot,
         content,
-        this.currentConversationId,
-        toolsResults
+        this.currentConversationId
       );
 
       this.currentConversationId = apiResponse.conversation_id;
@@ -57,23 +57,22 @@ export class MessageHandler {
     }
   }
 
-  static async executeAction(page: any, apiResponse: ApiResponse) {
-    if (apiResponse.action) {
+  static async executeAction(page: CorePage, apiResponse: ApiResponse) {
+    if (apiResponse.action && apiResponse.action.length > 0) {
       const actionOperator = new ActionOperator(page);
       const results = [];
       
       for (const action of apiResponse.action) {
         try {
-          // Ajouter l'exécution de l'action et récupérer le résultat
           const success = await actionOperator.executeAction(action);
           results.push({
-            tool_call_id: action.tool_call_id,
-            content: success ? "Action exécutée avec succès" : "Échec de l'action"
+            success,
+            description: success ? "Action exécutée avec succès" : "Échec de l'action"
           });
         } catch (error) {
           results.push({
-            tool_call_id: action.tool_call_id,
-            content: `Erreur: ${error instanceof Error ? error.message : 'Inconnue'}`
+            success: false,
+            description: `Erreur: ${error instanceof Error ? error.message : 'Inconnue'}`
           });
         }
       }
@@ -86,13 +85,14 @@ export class MessageHandler {
   static async processMessage(content: string): Promise<Message> {
     try {
       const [apiResponse, page, browser] = await this.getApiResponse(content);
-      const message = createMessage(apiResponse.content, false, apiResponse);
+      // Use message field if available, fallback to content
+      const messageContent = apiResponse.message || apiResponse.content;
+      const message = createMessage(messageContent, false, apiResponse);
       
       try {
         await this.executeAction(page, apiResponse);
       } finally {
-        // Ne pas déconnecter ici pour garder la session ouverte
-        // await DebuggerConnectionService.disconnect(browser); ← À SUPPRIMER
+        // Keep connection open
       }
       
       return message;
@@ -110,18 +110,18 @@ export class MessageHandler {
     }
   }
 
-  static async executeSingleAction(page: any, action: any) {
+  static async executeSingleAction(page: CorePage, action: any) {
     const actionOperator = new ActionOperator(page);
     try {
       const success = await actionOperator.executeAction(action);
       return {
-        tool_call_id: action.tool_call_id,
-        content: success ? "Action exécutée avec succès" : "Échec de l'action"
+        success,
+        description: success ? "Action exécutée avec succès" : "Échec de l'action"
       };
     } catch (error) {
       return {
-        tool_call_id: action.tool_call_id,
-        content: `Erreur: ${error instanceof Error ? error.message : 'Inconnue'}`
+        success: false,
+        description: `Erreur: ${error instanceof Error ? error.message : 'Inconnue'}`
       };
     }
   }

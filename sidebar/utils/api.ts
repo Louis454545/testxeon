@@ -31,8 +31,7 @@ export async function sendToApi(
   snapshot: any,
   screenshot: string,
   userMessage?: string,
-  conversationId: string | null = null,
-  toolsResults: Array<{ tool_call_id: string; content: string }> = []
+  conversationId: string | null = null
 ): Promise<ApiResponse> {
   const allTabs = await getAllTabs();
 
@@ -40,8 +39,7 @@ export async function sendToApi(
     context: JSON.stringify(snapshot),
     image: screenshot,
     tabs: allTabs,
-    conversation_id: conversationId,
-    tool_results: toolsResults.length > 0 ? toolsResults : null
+    conversation_id: conversationId
   };
 
   if (userMessage) {

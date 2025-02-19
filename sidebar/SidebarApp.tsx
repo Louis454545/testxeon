@@ -150,50 +150,53 @@ export default function SidebarApp() {
     try {
       const [apiResponse, page, browser] = await MessageHandler.getApiResponse(content);
       
-      // Met à jour le premier segment avec la réponse
-      assistantMessage.snapshot!.segments[0] = {
-        content: apiResponse.content,
-        actions: apiResponse.action.map(action => ({
-          action,
-          success: undefined,
-          isExecuting: true
-        }))
-      };
+      // Met à jour le message avec la réponse et les actions
+      const messageContent = apiResponse.message || apiResponse.content;
+      assistantMessage.content = messageContent;
+      if (assistantMessage.snapshot) {
+        if (!assistantMessage.snapshot.segments) {
+          assistantMessage.snapshot.segments = [];
+        }
+        assistantMessage.snapshot.segments[0] = {
+          content: messageContent,
+          actions: apiResponse.action.map(action => ({
+            action,
+            isExecuting: false
+          }))
+        };
+      }
       newMessages = [...baseMessages, assistantMessage];
       setMessages(newMessages);
       if (currentConversationId) updateConversation(currentConversationId, newMessages);
       
-      // Exécution séquentielle des actions
+      // Exécution séquentielle des actions avec mise à jour des états
       let actionResults = [];
-      for (const [index, action] of apiResponse.action.entries()) {
-        // Met à jour l'état d'exécution pour cette action uniquement
-        assistantMessage.snapshot!.segments[0].actions[index].isExecuting = true;
-        newMessages = [...baseMessages, assistantMessage];
-        setMessages(newMessages);
-        
-        // Exécute l'action une par une
-        const result = await MessageHandler.executeSingleAction(page, action);
-        actionResults.push(result);
-        
-        // Met à jour le résultat immédiatement
-        assistantMessage.snapshot!.segments[0].actions[index] = {
-          action,
-          success: result.content.includes("succès"),
-          isExecuting: false
-        };
-        newMessages = [...baseMessages, assistantMessage];
-        setMessages(newMessages);
-        if (currentConversationId) updateConversation(currentConversationId, newMessages);
-        
-        // Pause visuelle entre les actions
-        await new Promise(resolve => setTimeout(resolve, 300));
+      if (page && assistantMessage.snapshot?.segments?.[0]) {
+        for (let i = 0; i < apiResponse.action.length; i++) {
+          const action = apiResponse.action[i];
+          // Met à jour l'état isExecuting pour l'action courante
+          assistantMessage.snapshot.segments[0].actions[i].isExecuting = true;
+          setMessages([...baseMessages, assistantMessage]);
+          
+          const result = await MessageHandler.executeSingleAction(page, action);
+          actionResults.push(result);
+          
+          // Met à jour l'état success pour l'action terminée
+          assistantMessage.snapshot.segments[0].actions[i].isExecuting = false;
+          assistantMessage.snapshot.segments[0].actions[i].success = result.success;
+          setMessages([...baseMessages, assistantMessage]);
+          
+          await new Promise(resolve => setTimeout(resolve, 300));
+        }
       }
 
       // Boucle de suivi
       let lastResponse = apiResponse;
       while (!cancelSending.current && lastResponse.action && lastResponse.action.length > 0) {
         // Ajoute un nouveau segment "Thinking..." pour le follow-up
-        assistantMessage.snapshot!.segments.push({ content: "Thinking...", actions: [] });
+        if (assistantMessage.snapshot?.segments) {
+          assistantMessage.snapshot.segments.push({ content: "Thinking...", actions: [] });
+        }
         newMessages = [...baseMessages, assistantMessage];
         setMessages(newMessages);
         if (currentConversationId) updateConversation(currentConversationId, newMessages);
@@ -206,53 +209,54 @@ export default function SidebarApp() {
         
         if (cancelSending.current) break;
 
-        // Remplace le dernier "Thinking..." par la réponse
-        assistantMessage.snapshot!.segments[assistantMessage.snapshot!.segments.length - 1] = {
-          content: followupResponse.content,
-          actions: followupResponse.action.map(action => ({
-            action,
-            success: undefined,
-            isExecuting: true
-          }))
-        };
-        newMessages = [...baseMessages, assistantMessage];
-        setMessages(newMessages);
-        if (currentConversationId) updateConversation(currentConversationId, newMessages);
-        
-        // Exécution séquentielle des nouvelles actions
-        let followupResults = [];
-        for (const [index, action] of followupResponse.action.entries()) {
-          const lastSegment = assistantMessage.snapshot!.segments[assistantMessage.snapshot!.segments.length - 1];
-          lastSegment.actions[index].isExecuting = true;
-          newMessages = [...baseMessages, assistantMessage];
-          setMessages(newMessages);
-          
-          const result = await MessageHandler.executeSingleAction(page, action);
-          followupResults.push(result);
-          
-          lastSegment.actions[index] = {
-            action,
-            success: result.content.includes("succès"),
-            isExecuting: false
+        // Remplace le dernier "Thinking..." par la réponse avec les actions
+        const followupContent = followupResponse.message || followupResponse.content;
+        if (assistantMessage.snapshot?.segments) {
+          const lastSegmentIndex = assistantMessage.snapshot.segments.length - 1;
+          assistantMessage.snapshot.segments[lastSegmentIndex] = {
+            content: followupContent,
+            actions: followupResponse.action.map(action => ({
+              action,
+              isExecuting: false
+            }))
           };
-          newMessages = [...baseMessages, assistantMessage];
-          setMessages(newMessages);
-          if (currentConversationId) updateConversation(currentConversationId, newMessages);
+          assistantMessage.content = followupContent;
+
+          // Exécution séquentielle des nouvelles actions avec mise à jour des états
+          let followupResults = [];
+          if (page) {
+            for (let i = 0; i < followupResponse.action.length; i++) {
+              const action = followupResponse.action[i];
+              // Met à jour l'état isExecuting pour l'action courante
+              assistantMessage.snapshot.segments[lastSegmentIndex].actions[i].isExecuting = true;
+              setMessages([...baseMessages, assistantMessage]);
+              
+              const result = await MessageHandler.executeSingleAction(page, action);
+              followupResults.push(result);
+              
+              // Met à jour l'état success pour l'action terminée
+              assistantMessage.snapshot.segments[lastSegmentIndex].actions[i].isExecuting = false;
+              assistantMessage.snapshot.segments[lastSegmentIndex].actions[i].success = result.success;
+              setMessages([...baseMessages, assistantMessage]);
+              
+              await new Promise(resolve => setTimeout(resolve, 300));
+            }
+          }
           
-          await new Promise(resolve => setTimeout(resolve, 300));
+          lastResponse = followupResponse;
+          actionResults = followupResults;
         }
-        
-        lastResponse = followupResponse;
-        actionResults = followupResults;
       }
     } catch (error) {
       console.error('Error processing message:', error);
-      assistantMessage.snapshot!.segments.push({
-        content: `Erreur : ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
-        actions: []
-      });
-      newMessages = [...baseMessages, assistantMessage];
-      setMessages(newMessages);
+      if (assistantMessage.snapshot?.segments) {
+        assistantMessage.snapshot.segments.push({
+          content: `Erreur : ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+          actions: []
+        });
+        newMessages = [...baseMessages, assistantMessage];
+        setMessages(newMessages);
+      }
       if (currentConversationId) updateConversation(currentConversationId, newMessages);
     } finally {
       setIsSending(false);

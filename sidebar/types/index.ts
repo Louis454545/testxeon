@@ -24,8 +24,9 @@ export interface Message {
   
   /** Response data from the API */
   snapshot?: {
-    action?: Action | Action[];
+    action?: Action[];
     content?: string;
+    message?: string;
     conversation_id?: string;
     segments?: MessageSegment[];
   };
