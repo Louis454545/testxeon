@@ -22,6 +22,9 @@ export interface Message {
   /** When the message was sent */
   timestamp: Date;
   
+  /** Temporary ID for messages in progress */
+  tempId?: number;
+  
   /** Response data from the API */
   snapshot?: {
     action?: Action[];

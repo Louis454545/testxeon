@@ -22,7 +22,7 @@ export default function SidebarApp() {
   const [isSupportedUrl, setIsSupportedUrl] = useState(true)
 
   // Référence pour gérer l'annulation du processus d'envoi
-  const cancelSending = useRef(false);
+  const cancelSending = useRef<() => void | null>(null);
 
   useEffect(() => {
     // Initialize theme from storage on mount
@@ -57,7 +57,9 @@ export default function SidebarApp() {
 
   const handleCancelMessage = () => {
     if (isSending) {
-      cancelSending.current = true
+      cancelSending.current?.();
+      cancelSending.current = null;
+      setIsSending(false);
     }
   }
 
@@ -123,7 +125,9 @@ export default function SidebarApp() {
   }
 
   const handleSubmitMessage = async (content: string) => {
-    cancelSending.current = false;
+    const abortController = new AbortController();
+    cancelSending.current = () => abortController.abort();
+
     setIsSending(true);
 
     // Ajoute le message utilisateur
@@ -142,13 +146,19 @@ export default function SidebarApp() {
 
     // Crée un message assistant avec une structure de segments
     let assistantMessage = createMessage("", false);
+    assistantMessage.tempId = Date.now();
     assistantMessage.snapshot = { segments: [{ content: "Thinking...", actions: [] }] };
     let newMessages = [...baseMessages, assistantMessage];
     setMessages(newMessages);
     if (currentConversationId) updateConversation(currentConversationId, newMessages);
 
     try {
-      const [apiResponse, page, browser] = await MessageHandler.getApiResponse(content);
+      const [apiResponse, page, browser] = await MessageHandler.getApiResponse(
+        content,
+        null,
+        [],
+        abortController
+      );
       
       // Vérifier immédiatement les actions de fin
       const isFinalAction = apiResponse.action?.some(a => 
@@ -215,7 +225,7 @@ export default function SidebarApp() {
 
       // Boucle de suivi
       let lastResponse = apiResponse;
-      while (!cancelSending.current && lastResponse.action && lastResponse.action.length > 0) {
+      while (!abortController.signal.aborted && lastResponse.action && lastResponse.action.length > 0) {
         // Vérifier si la nouvelle réponse contient une action de fin
         const hasCompletion = lastResponse.action.some(a => 
           'done' in a || 'ask' in a
@@ -238,7 +248,7 @@ export default function SidebarApp() {
           actionResults
         );
         
-        if (cancelSending.current) break;
+        if (abortController.signal.aborted) break;
 
         // Remplace le dernier "Thinking..." par la réponse avec les actions
         const followupContent = followupResponse.message || followupResponse.content;
@@ -279,16 +289,26 @@ export default function SidebarApp() {
         }
       }
     } catch (error) {
-      console.error('Error processing message:', error);
-      if (assistantMessage.snapshot?.segments) {
-        assistantMessage.snapshot.segments.push({
-          content: `Erreur : ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
-          actions: []
+      if (error.name === 'AbortError') {
+        setMessages(prev => {
+          const lastMessage = prev[prev.length - 1];
+          if (lastMessage?.content === "" && lastMessage?.snapshot?.segments?.[0]?.content === "Thinking...") {
+            return prev.slice(0, -1);
+          }
+          return prev;
         });
-        newMessages = [...baseMessages, assistantMessage];
-        setMessages(newMessages);
+      } else {
+        console.error('Error processing message:', error);
+        if (assistantMessage.snapshot?.segments) {
+          assistantMessage.snapshot.segments.push({
+            content: `Erreur : ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+            actions: []
+          });
+          newMessages = [...baseMessages, assistantMessage];
+          setMessages(newMessages);
+        }
+        if (currentConversationId) updateConversation(currentConversationId, newMessages);
       }
-      if (currentConversationId) updateConversation(currentConversationId, newMessages);
     } finally {
       setIsSending(false);
     }

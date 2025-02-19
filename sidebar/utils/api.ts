@@ -31,7 +31,8 @@ export async function sendToApi(
   snapshot: any,
   screenshot: string,
   userMessage?: string,
-  conversationId: string | null = null
+  conversationId: string | null = null,
+  abortController?: AbortController
 ): Promise<ApiResponse> {
   const allTabs = await getAllTabs();
 
@@ -52,6 +53,7 @@ export async function sendToApi(
       'Content-Type': 'application/json',
     },
     body: JSON.stringify(payload),
+    signal: abortController?.signal
   });
 
   if (!response.ok) {

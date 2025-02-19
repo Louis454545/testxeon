@@ -14,7 +14,8 @@ export class MessageHandler {
   static async getApiResponse(
     content: string | undefined = undefined,
     existingPage: CorePage | null = null,
-    actionResults: Array<{ success: boolean; description: string }> = []
+    actionResults: Array<{ success: boolean; description: string }> = [],
+    abortController?: AbortController
   ): Promise<[ApiResponse, CorePage, CoreBrowser | null]> {
     let page: CorePage;
     let browser: CoreBrowser | null = null;
@@ -41,7 +42,8 @@ export class MessageHandler {
         pageData.accessibility,
         pageData.screenshot,
         content,
-        this.currentConversationId
+        this.currentConversationId,
+        abortController
       );
 
       this.currentConversationId = apiResponse.conversation_id;

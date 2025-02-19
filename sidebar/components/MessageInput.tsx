@@ -55,7 +55,8 @@ export function MessageInput({ onSubmit, isSending, onCancel }: MessageInputProp
               "h-9 w-9",
               "transition-all duration-200",
               isSending ? (
-                "text-destructive hover:text-destructive hover:bg-destructive/10"
+                "text-destructive hover:text-destructive hover:bg-destructive/10",
+                "animate-pulse"
               ) : (
                 "text-primary hover:text-primary hover:bg-primary/10",
                 inputValue.trim() === "" && "opacity-70 pointer-events-none"
