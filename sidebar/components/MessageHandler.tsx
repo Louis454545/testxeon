@@ -84,18 +84,40 @@ export class MessageHandler {
 
   static async processMessage(content: string): Promise<Message> {
     try {
-      const [apiResponse, page, browser] = await this.getApiResponse(content);
-      // Use message field if available, fallback to content
-      const messageContent = apiResponse.message || apiResponse.content;
-      const message = createMessage(messageContent, false, apiResponse);
+      let shouldContinue = true;
+      let finalMessage = '';
       
-      try {
-        await this.executeAction(page, apiResponse);
-      } finally {
-        // Keep connection open
-      }
-      
-      return message;
+      do {
+        const [apiResponse, page, browser] = await this.getApiResponse(content);
+        const messageContent = apiResponse.message || apiResponse.content;
+        const message = createMessage(messageContent, false, apiResponse);
+
+        if (apiResponse.action) {
+          const actionResults = await this.executeAction(page, apiResponse);
+          
+          // Vérifier les actions de fin
+          const hasCompletionAction = apiResponse.action.some(a => 
+            'done' in a || 'ask' in a
+          );
+          
+          shouldContinue = !hasCompletionAction;
+          finalMessage = messageContent;
+
+          // Si c'est une question ou une complétion, arrêter immédiatement
+          if (hasCompletionAction) {
+            await this.closeConnection();
+            return createMessage(finalMessage, false, apiResponse);
+          }
+        }
+
+        if (!shouldContinue) {
+          await this.closeConnection();
+          return createMessage(finalMessage, false, apiResponse);
+        }
+
+      } while (shouldContinue);
+
+      return createMessage(finalMessage, false);
     } catch (error) {
       console.error('Error in processMessage:', error);
       throw error;

@@ -38,6 +38,14 @@ export interface Action {
     duration: number;
     description?: string;
   };
+  ask?: {
+    question: string;
+    description?: string;
+  };
+  done?: {
+    message: string;
+    description?: string;
+  };
 }
 
 export interface ApiPayload {

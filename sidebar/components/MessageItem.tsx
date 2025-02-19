@@ -11,7 +11,9 @@ import {
   ArrowRight,
   Keyboard,
   Clock,
-  LayoutGrid
+  LayoutGrid,
+  MessageCircleQuestion,
+  CheckCircle
 } from "lucide-react";
 import { Action } from "../types/api";
 import { ThinkingMessage } from "./ThinkingMessage";
@@ -19,7 +21,7 @@ import { cn } from "@/lib/utils";
 import ReactMarkdown from 'react-markdown'
 import React from 'react';
 
-const getActionConfig = (action: Action) => {
+const getActionConfig = (action: Action, content?: string) => {
   const config = {
     icon: MousePointerClick,
     bgColor: 'bg-gray-50 dark:bg-gray-500/10',
@@ -112,6 +114,18 @@ const getActionConfig = (action: Action) => {
       config.shadowColor = 'shadow-gray-500/25';
       config.description = action.wait!.description || `Wait for ${action.wait!.duration}ms`;
       break;
+    case 'ask':
+      config.icon = MessageCircleQuestion;
+      config.bgColor = 'bg-purple-50 dark:bg-purple-500/10';
+      config.textColor = 'text-purple-700 dark:text-purple-300';
+      config.description = content || 'Question for user';
+      break;
+    case 'done':
+      config.icon = CheckCircle;
+      config.bgColor = 'bg-green-50 dark:bg-green-500/10';
+      config.textColor = 'text-green-700 dark:text-green-300';
+      config.description = content || 'Task completed';
+      break;
   }
 
   return config;
@@ -121,15 +135,19 @@ const ActionBadge = ({
   action, 
   isExecuting,
   success,
-  className
+  className,
+  messageContent
 }: { 
   action: Action;
   isExecuting?: boolean;
   success?: boolean;
   className?: string;
+  messageContent?: string;
 }) => {
-  const config = getActionConfig(action);
+  const config = getActionConfig(action, messageContent);
   const Icon = config.icon;
+  
+  const isCompletionAction = 'done' in action || 'ask' in action;
 
   return (
     <div
@@ -159,7 +177,7 @@ const ActionBadge = ({
         {isExecuting ? (
           <Loader2 className={cn("w-5 h-5 animate-spin", config.iconColor)} />
         ) : null}
-        {success !== undefined && (
+        {!isCompletionAction && success !== undefined && (
           success ? 
             <Check className="w-5 h-5 text-green-500 dark:text-green-400 animate-fade-scale" /> :
             <XCircle className="w-5 h-5 text-red-500 dark:text-red-400 animate-fade-scale" />
@@ -184,6 +202,11 @@ const MessageBubble = ({
   isUser: boolean;
   isThinking?: boolean;
 }) => {
+  // Vérifier si on a des actions de fin
+  const hasCompletionAction = actions?.some(({ action }) => 
+    'ask' in action || 'done' in action
+  );
+
   if (isThinking) {
     return (
       <div className={cn(
@@ -217,14 +240,18 @@ const MessageBubble = ({
         "max-w-[85%]"
       )}
     >
-      <p className={cn(
-        "whitespace-pre-line leading-relaxed text-[15px]",
-        !isUser && "animate-fade-in"
-      )}>
-        <ReactMarkdown className="prose dark:prose-invert prose-sm max-w-none">
-          {content}
-        </ReactMarkdown>
-      </p>
+      {/* Masquer le contenu si on a des actions de fin */}
+      {!hasCompletionAction && (
+        <p className={cn(
+          "whitespace-pre-line leading-relaxed text-[15px]",
+          !isUser && "animate-fade-in"
+        )}>
+          <ReactMarkdown className="prose dark:prose-invert prose-sm max-w-none">
+            {content}
+          </ReactMarkdown>
+        </p>
+      )}
+      
       {actions && actions.length > 0 && (
         <div className="mt-2 flex flex-col gap-2 animate-slide-up">
           {actions.map(({ action, success, isExecuting }, index) => (
@@ -234,6 +261,7 @@ const MessageBubble = ({
               success={success}
               isExecuting={isExecuting}
               className="w-full"
+              messageContent={content}
             />
           ))}
         </div>
