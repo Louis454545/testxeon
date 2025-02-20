@@ -118,13 +118,17 @@ const getActionConfig = (action: Action, content?: string) => {
       config.icon = MessageCircleQuestion;
       config.bgColor = 'bg-purple-50 dark:bg-purple-500/10';
       config.textColor = 'text-purple-700 dark:text-purple-300';
-      config.description = content || 'Question for user';
+      config.description = action.ask!.query || action.ask!.description || 'Question pour l\'utilisateur';
       break;
     case 'done':
-      config.icon = CheckCircle;
-      config.bgColor = 'bg-green-50 dark:bg-green-500/10';
-      config.textColor = 'text-green-700 dark:text-green-300';
-      config.description = content || 'Task completed';
+      config.icon = undefined;
+      config.bgColor = '';
+      config.textColor = '';
+      config.borderColor = '';
+      config.iconColor = '';
+      config.hoverBg = '';
+      config.shadowColor = '';
+      config.description = action.done!.message || action.done!.description || '';
       break;
   }
 
@@ -145,8 +149,13 @@ const ActionBadge = ({
   messageContent?: string;
 }) => {
   const config = getActionConfig(action, messageContent);
-  const Icon = config.icon;
   
+  if ('done' in action) {
+    return null;
+  }
+
+  const Icon = config.icon;
+
   const isCompletionAction = 'done' in action || 'ask' in action;
 
   return (
@@ -202,10 +211,12 @@ const MessageBubble = ({
   isUser: boolean;
   isThinking?: boolean;
 }) => {
-  // Vérifier si on a des actions de fin
-  const hasCompletionAction = actions?.some(({ action }) => 
-    'ask' in action || 'done' in action
-  );
+  // Extraire le message 'done' s'il existe
+  const doneMessage = actions?.find(a => 'done' in a.action)?.action.done?.message;
+  const displayContent = doneMessage || content;
+
+  // Masquer les actions 'ask' uniquement
+  const hasAskAction = actions?.some(({ action }) => 'ask' in action);
 
   if (isThinking) {
     return (
@@ -240,30 +251,31 @@ const MessageBubble = ({
         "max-w-[85%]"
       )}
     >
-      {/* Masquer le contenu si on a des actions de fin */}
-      {!hasCompletionAction && (
-        <p className={cn(
-          "whitespace-pre-line leading-relaxed text-[15px]",
-          !isUser && "animate-fade-in"
-        )}>
-          <ReactMarkdown className="prose dark:prose-invert prose-sm max-w-none">
-            {content}
-          </ReactMarkdown>
-        </p>
-      )}
-      
+      {/* Afficher toujours le contenu principal */}
+      <p className={cn(
+        "whitespace-pre-line leading-relaxed text-[15px]",
+        !isUser && "animate-fade-in"
+      )}>
+        <ReactMarkdown className="prose dark:prose-invert prose-sm max-w-none">
+          {displayContent}
+        </ReactMarkdown>
+      </p>
+
+      {/* Afficher uniquement les autres actions */}
       {actions && actions.length > 0 && (
         <div className="mt-2 flex flex-col gap-2 animate-slide-up">
-          {actions.map(({ action, success, isExecuting }, index) => (
-            <ActionBadge
-              key={index}
-              action={action}
-              success={success}
-              isExecuting={isExecuting}
-              className="w-full"
-              messageContent={content}
-            />
-          ))}
+          {actions
+            .filter(({ action }) => !('done' in action)) // Filtrer les actions 'done'
+            .map(({ action, success, isExecuting }, index) => (
+              <ActionBadge
+                key={index}
+                action={action}
+                success={success}
+                isExecuting={isExecuting}
+                className="w-full"
+                messageContent={content}
+              />
+            ))}
         </div>
       )}
     </div>

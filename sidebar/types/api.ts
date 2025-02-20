@@ -39,7 +39,7 @@ export interface Action {
     description?: string;
   };
   ask?: {
-    question: string;
+    query: string;
     description?: string;
   };
   done?: {
