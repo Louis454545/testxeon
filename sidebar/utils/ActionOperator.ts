@@ -14,6 +14,9 @@ export class ActionOperator {
     try {
       await VisualEffects.showLoadingState(this.page);
 
+      console.log('Exécution de l\'action:', action);
+      console.log(`NodeMap contient ${nodeMap.size} nœuds`);
+
       switch (Object.keys(action)[0]) {
         case 'click':
           return this.executeClickAction(action.click!);
@@ -42,9 +45,35 @@ export class ActionOperator {
   }
 
   private async executeClickAction(click: NonNullable<Action['click']>): Promise<boolean> {
-    const node = nodeMap.get(click.id);
+    const nodeId = String(click.id);
+    console.log(`Recherche du nœud avec ID: ${nodeId}`);
+    
+    console.log('IDs disponibles:', Array.from(nodeMap.keys()));
+    
+    const node = nodeMap.get(nodeId);
     if (!node) {
-      console.error(`Node not found for target: ${click.id}`);
+      console.error(`Node not found for target: ${nodeId}`);
+      
+      const allNodes = Array.from(nodeMap.values());
+      const potentialNode = allNodes.find(n => 
+        (n.name && n.name.includes(nodeId)) || 
+        (n.role && n.role.includes(nodeId))
+      );
+      
+      if (potentialNode) {
+        console.log(`Nœud alternatif trouvé par nom/rôle:`, potentialNode);
+        try {
+          const elementHandle = await potentialNode.elementHandle();
+          if (elementHandle) {
+            await elementHandle.click();
+            await this.waitForPageLoad();
+            return true;
+          }
+        } catch (error) {
+          console.error("Erreur avec le nœud alternatif:", error);
+        }
+      }
+      
       return false;
     }
 
@@ -74,9 +103,38 @@ export class ActionOperator {
   }
 
   private async executeInputAction(input: NonNullable<Action['input']>): Promise<boolean> {
-    const node = nodeMap.get(input.id);
+    const nodeId = String(input.id);
+    console.log(`Recherche du nœud input avec ID: ${nodeId}`);
+    
+    const node = nodeMap.get(nodeId);
     if (!node) {
-      console.error(`Node not found for target: ${input.id}`);
+      console.error(`Node not found for target: ${nodeId}`);
+      
+      const allNodes = Array.from(nodeMap.values());
+      const potentialNode = allNodes.find(n => 
+        (n.role === 'textbox' || n.role === 'searchbox') && 
+        ((n.name && n.name.includes(nodeId)) || 
+         (n.description && n.description.includes(nodeId)))
+      );
+      
+      if (potentialNode) {
+        console.log(`Input alternatif trouvé:`, potentialNode);
+        try {
+          const elementHandle = await potentialNode.elementHandle();
+          if (elementHandle) {
+            await elementHandle.evaluate((el: HTMLInputElement) => {
+              el.value = "";
+              el.dispatchEvent(new Event("input", { bubbles: true }));
+            });
+            await elementHandle.type(input.text);
+            await this.waitForPageLoad();
+            return true;
+          }
+        } catch (error) {
+          console.error("Erreur avec l'input alternatif:", error);
+        }
+      }
+      
       return false;
     }
 
@@ -85,18 +143,6 @@ export class ActionOperator {
       console.error("Failed to get element handle");
       return false;
     }
-    await elementHandle.focus();
-
-    const rect = await elementHandle.evaluate((el: Element) => {
-      const { x, y, height } = el.getBoundingClientRect();
-      return { x, y, height };
-    });
-    await VisualEffects.showInputCursor(
-      this.page,
-      rect.x,
-      rect.y,
-      rect.height
-    );
 
     await elementHandle.evaluate((el: HTMLInputElement) => {
       el.value = "";

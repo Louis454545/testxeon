@@ -13,8 +13,15 @@ export const nodeMap = new Map<string, any>();
  * Parcours le snapshot d'accessibilité et stocke chaque nœud dans nodeMap.
  */
 function mapNodes(node: any) {
-  nodeMap.set(String(node.id), node);
-  if (node.children) {
+  // Assurer que l'ID est converti en chaîne de caractères
+  const nodeId = String(node.id);
+  nodeMap.set(nodeId, node);
+  
+  // Log pour le débogage
+  console.log(`Mapping node ID: ${nodeId}`, node.role || node.name || 'unnamed');
+  
+  // Récursion pour les enfants
+  if (node.children && Array.isArray(node.children)) {
     node.children.forEach(mapNodes);
   }
 }
@@ -37,6 +44,11 @@ export class PageCaptureService {
     nodeMap.clear();
     if (accessibility) {
       mapNodes(accessibility);
+      
+      // Log pour débogage - vérifier le contenu du nodeMap
+      console.log(`NodeMap contient ${nodeMap.size} nœuds`);
+      console.log(`NodeMap contient l'ID 2? ${nodeMap.has('2')}`);
+      
       // Dessiner les bounding boxes en utilisant elementHandle()
       await drawAccessibilityBoxes(page, accessibility);
     }

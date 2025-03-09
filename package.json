@@ -30,11 +30,13 @@
     "@types/puppeteer-core": "^5.4.0",
     "@types/react": "^18.2.64",
     "@types/react-dom": "^18.2.21",
+    "@types/uuid": "^10.0.0",
     "autoprefixer": "^10.4.20",
     "extension": "latest",
     "postcss": "^8.4.47",
     "tailwindcss": "^3.4.13",
-    "typescript": "5.3.3"
+    "typescript": "5.3.3",
+    "uuid": "^11.1.0"
   },
   "scripts": {
     "dev": "extension dev",

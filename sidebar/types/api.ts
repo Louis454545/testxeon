@@ -1,8 +1,32 @@
+/**
+ * API Response from the AI
+ */
+export interface ApiResponse {
+  conversation_id: string;
+  message?: string;
+  content?: string;
+  action?: any[];
+}
+
+/**
+ * Tab information
+ */
 export interface Tab {
   id: string;
-  url: string;
   title: string;
+  url: string;
   active: boolean;
+}
+
+/**
+ * API Payload for sending to backend
+ */
+export interface ApiPayload {
+  context: string;
+  image?: string;
+  tabs: Tab[];
+  conversation_id?: string | null;
+  message?: string;
 }
 
 export interface Action {
@@ -46,19 +70,4 @@ export interface Action {
     message: string;
     description?: string;
   };
-}
-
-export interface ApiPayload {
-  context: string;
-  message?: string;
-  image: string;
-  tabs: Tab[];
-  conversation_id: string | null;
-}
-
-export interface ApiResponse {
-  conversation_id: string;
-  message: string;
-  content: string;
-  action: Action[];
 }

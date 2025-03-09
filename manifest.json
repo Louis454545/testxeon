@@ -26,5 +26,18 @@
   ],
   "background": {
     "chromium:service_worker": "background.ts"
-  }
+  },
+  "permissions": [
+    "activeTab",
+    "debugger",
+    "tabs",
+    "storage",
+    "notifications",
+    "contextMenus"
+  ],
+  "host_permissions": [
+    "<all_urls>",
+    "https://*.googleapis.com/*",
+    "https://*.openai.com/*"
+  ]
 }

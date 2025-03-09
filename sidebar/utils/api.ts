@@ -1,4 +1,8 @@
 import type { ApiPayload, ApiResponse, Tab } from '../types/api';
+import { AIService } from './ai-service';
+
+// Create a global instance of the AI service
+const aiService = new AIService();
 
 /**
  * Default API endpoints
@@ -25,7 +29,7 @@ async function getAllTabs(): Promise<Tab[]> {
 }
 
 /**
- * Sends data to the API and returns the response
+ * Sends data to the AI service and returns the response
  */
 export async function sendToApi(
   snapshot: any,
@@ -36,43 +40,29 @@ export async function sendToApi(
 ): Promise<ApiResponse> {
   const allTabs = await getAllTabs();
 
-  const payload: ApiPayload = {
-    context: JSON.stringify(snapshot),
-    image: screenshot,
-    tabs: allTabs,
-    conversation_id: conversationId
-  };
-
-  if (userMessage) {
-    payload.message = userMessage;
+  try {
+    // Use our local AI service instead of making a network request
+    const response = await aiService.processMessage(
+      JSON.stringify(snapshot),
+      allTabs,
+      conversationId,
+      userMessage || undefined,
+      screenshot
+    );
+    
+    return response;
+  } catch (error) {
+    console.error('Error processing message with AI service:', error);
+    throw error;
   }
-
-  const response = await fetch(API_ENDPOINTS.message, {
-    method: 'POST',
-    headers: {
-      'Content-Type': 'application/json',
-    },
-    body: JSON.stringify(payload),
-    signal: abortController?.signal
-  });
-
-  if (!response.ok) {
-    throw new Error(`API request failed with status ${response.status}`);
-  }
-
-  return await response.json();
 }
 
 /**
  * Reset a conversation
  */
 export async function resetConversation(conversationId: string): Promise<void> {
-  const response = await fetch(API_ENDPOINTS.resetConversation(conversationId), {
-    method: 'POST'
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Failed to reset conversation: ${response.statusText}`);
+  if (!aiService.resetConversation(conversationId)) {
+    throw new Error(`Failed to reset conversation: ${conversationId}`);
   }
 }
 
@@ -80,12 +70,8 @@ export async function resetConversation(conversationId: string): Promise<void> {
  * Delete a conversation
  */
 export async function deleteConversation(conversationId: string): Promise<void> {
-  const response = await fetch(API_ENDPOINTS.deleteConversation(conversationId), {
-    method: 'DELETE'
-  });
-  
-  if (!response.ok) {
-    throw new Error(`Failed to delete conversation: ${response.statusText}`);
+  if (!aiService.deleteConversation(conversationId)) {
+    throw new Error(`Failed to delete conversation: ${conversationId}`);
   }
 }
 
@@ -93,11 +79,19 @@ export async function deleteConversation(conversationId: string): Promise<void> 
  * Get all conversations
  */
 export async function getConversations(): Promise<any[]> {
-  const response = await fetch(API_ENDPOINTS.getConversations);
-  
-  if (!response.ok) {
-    throw new Error(`Failed to fetch conversations: ${response.statusText}`);
-  }
-  
-  return response.json();
+  return aiService.getAllConversations();
+}
+
+/**
+ * Save AI configuration
+ */
+export async function saveAIConfig(config: any): Promise<void> {
+  await aiService.saveConfig(config);
+}
+
+/**
+ * Save system prompt
+ */
+export async function saveSystemPrompt(prompt: string): Promise<void> {
+  await aiService.saveSystemPrompt(prompt);
 }

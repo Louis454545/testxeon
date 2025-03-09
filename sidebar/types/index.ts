@@ -123,3 +123,5 @@ export interface ConversationsPageProps {
   /** Callback when a conversation is deleted */
   onDeleteConversation: (id: string) => void;
 }
+
+export * from './api';
