@@ -13,6 +13,14 @@ Unlike other solutions, Xeon Agent:
 - **Supports multiple AI models**: compatible with Google Gemini and OpenAI
 - **Is fully customizable**: adjust settings to your needs
 
+## 🎬 Demo
+
+See Xeon Agent in action:
+
+https://github.com/user/xeon-agent/assets/demo.mp4
+
+*Watch how Xeon Agent can help you automate browser tasks with simple natural language commands.*
+
 ## 📝 Message from the Author
 
 > Hi! I'm a developer passionate about automation. This project was born from my curiosity for AI and web automation.
