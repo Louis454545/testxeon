@@ -15,7 +15,7 @@ export function UnsupportedUrlView({ onRedirect }: { onRedirect: () => void }) {
           "animate-in fade-in slide-in-from-bottom-4 duration-1000"
         )}
       >
-        {/* Icône avec animation */}
+        {/* Icon with animation */}
         <div className="relative flex justify-center" aria-hidden="true">
           <div className={cn(
             "absolute inset-0 bg-yellow-500/20 dark:bg-yellow-500/10",
@@ -31,12 +31,12 @@ export function UnsupportedUrlView({ onRedirect }: { onRedirect: () => void }) {
           )}>
             <AlertTriangle 
               className="h-12 w-12 text-yellow-600 dark:text-yellow-500"
-              aria-label="Avertissement"
+              aria-label="Warning"
             />
           </div>
         </div>
 
-        {/* Texte */}
+        {/* Text */}
         <div className="space-y-4 text-center px-4">
           <h2 className={cn(
             "text-2xl font-bold bg-gradient-to-r",
@@ -45,27 +45,27 @@ export function UnsupportedUrlView({ onRedirect }: { onRedirect: () => void }) {
             "bg-clip-text text-transparent",
             "animate-in fade-in duration-1000 delay-200"
           )}>
-            Navigation restreinte
+            Restricted Navigation
           </h2>
           
           <p className={cn(
             "text-muted-foreground/80 leading-relaxed",
             "animate-in fade-in duration-1000 delay-300"
           )}>
-            Cette page spéciale (<code className="font-mono text-sm bg-muted/50 px-1.5 py-0.5 rounded">chrome://</code>, 
+            This special page (<code className="font-mono text-sm bg-muted/50 px-1.5 py-0.5 rounded">chrome://</code>, 
             <code className="font-mono text-sm bg-muted/50 px-1.5 py-0.5 rounded ml-1">about:blank</code>, etc.) 
-            ne peut pas être utilisée avec l'assistant.
+            cannot be used with the assistant.
           </p>
           
           <p className={cn(
             "text-muted-foreground/80",
             "animate-in fade-in duration-1000 delay-400"
           )}>
-            Veuillez naviguer vers un site web standard pour continuer.
+            Please navigate to a standard website to continue.
           </p>
         </div>
 
-        {/* Bouton */}
+        {/* Button */}
         <div className={cn(
           "px-4 pt-2",
           "animate-in fade-in slide-in-from-bottom-4 duration-1000 delay-500"
@@ -84,9 +84,9 @@ export function UnsupportedUrlView({ onRedirect }: { onRedirect: () => void }) {
               "hover:-translate-y-0.5 active:translate-y-0",
               "group"
             )}
-            aria-label="Aller sur Google"
+            aria-label="Go to Google"
           >
-            <span>Aller sur Google</span>
+            <span>Go to Google</span>
             <ArrowRight className={cn(
               "w-4 h-4 transition-transform duration-200",
               "group-hover:translate-x-0.5"
@@ -94,7 +94,7 @@ export function UnsupportedUrlView({ onRedirect }: { onRedirect: () => void }) {
           </Button>
         </div>
 
-        {/* Décoration de fond */}
+        {/* Background decoration */}
         <div 
           className={cn(
             "fixed inset-0 -z-10",

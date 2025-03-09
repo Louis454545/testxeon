@@ -28,7 +28,7 @@ export function MessageInput({ onSubmit, isSending, onCancel }: MessageInputProp
         <div className="relative flex-1 group">
           <Input
             type="text"
-            placeholder="Message pour l'IA..."
+            placeholder="Message for AI..."
             value={inputValue}
             onChange={(e) => setInputValue(e.target.value)}
             className={cn(
@@ -54,13 +54,13 @@ export function MessageInput({ onSubmit, isSending, onCancel }: MessageInputProp
               "absolute right-1.5 top-1/2 -translate-y-1/2",
               "h-9 w-9",
               "transition-all duration-200",
-              isSending ? (
-                "text-destructive hover:text-destructive hover:bg-destructive/10",
-                "animate-pulse"
-              ) : (
-                "text-primary hover:text-primary hover:bg-primary/10",
-                inputValue.trim() === "" && "opacity-70 pointer-events-none"
-              ),
+              isSending ? 
+                "text-destructive hover:text-destructive hover:bg-destructive/10 animate-pulse"
+              : 
+                inputValue.trim() === "" ? 
+                  "text-primary hover:text-primary hover:bg-primary/10 opacity-70 pointer-events-none"
+                : 
+                  "text-primary hover:text-primary hover:bg-primary/10",
               "hover:scale-105 active:scale-95"
             )}
           >

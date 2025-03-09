@@ -118,10 +118,10 @@ const getActionConfig = (action: Action, content?: string) => {
       config.icon = MessageCircleQuestion;
       config.bgColor = 'bg-purple-50 dark:bg-purple-500/10';
       config.textColor = 'text-purple-700 dark:text-purple-300';
-      config.description = action.ask!.query || action.ask!.description || 'Question pour l\'utilisateur';
+      config.description = action.ask!.query || action.ask!.description || 'Question for the user';
       break;
     case 'done':
-      config.icon = undefined;
+      config.icon = CheckCircle;
       config.bgColor = '';
       config.textColor = '';
       config.borderColor = '';

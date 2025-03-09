@@ -21,7 +21,7 @@ export default function SidebarApp() {
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
   const [isSupportedUrl, setIsSupportedUrl] = useState(true)
 
-  // Référence pour gérer l'annulation du processus d'envoi
+  // Reference to handle the cancellation of the sending process
   const cancelSending = useRef<() => void | null>(null);
 
   useEffect(() => {
@@ -130,7 +130,7 @@ export default function SidebarApp() {
 
     setIsSending(true);
 
-    // Ajoute le message utilisateur
+    // Add user message
     const userMessage: Message = {
       content,
       isUser: true,
@@ -144,7 +144,7 @@ export default function SidebarApp() {
       createNewConversation(baseMessages);
     }
 
-    // Crée un message assistant avec une structure de segments
+    // Create assistant message with segment structure
     let assistantMessage = createMessage("", false);
     assistantMessage.tempId = Date.now();
     assistantMessage.snapshot = { segments: [{ content: "Thinking...", actions: [] }] };
@@ -160,12 +160,12 @@ export default function SidebarApp() {
         abortController
       );
       
-      // Vérifier immédiatement les actions de fin
+      // Immediately check for final actions
       const isFinalAction = apiResponse.action?.some(a => 
         'done' in a || 'ask' in a
       );
 
-      // Mettre à jour le message
+      // Update the message
       const messageContent = apiResponse.message || apiResponse.content;
       assistantMessage.content = messageContent;
       
@@ -181,7 +181,7 @@ export default function SidebarApp() {
         return;
       }
 
-      // Remplacer le segment "Thinking..." par la réponse réelle
+      // Replace "Thinking..." segment with actual response
       if (assistantMessage.snapshot?.segments) {
         assistantMessage.snapshot.segments[0] = {
           content: messageContent,
@@ -194,10 +194,10 @@ export default function SidebarApp() {
         setMessages([...baseMessages, assistantMessage]);
       }
 
-      // Exécution séquentielle des actions avec mise à jour des états
+      // Sequential execution of actions with state updates
       let actionResults = [];
       if (page && assistantMessage.snapshot?.segments?.[0]) {
-        // Initialiser le tableau d'actions avec des valeurs par défaut
+        // Initialize action array with default values
         assistantMessage.snapshot.segments[0].actions = apiResponse.action.map(action => ({
           action,
           isExecuting: false,
@@ -207,14 +207,14 @@ export default function SidebarApp() {
 
         for (let i = 0; i < apiResponse.action.length; i++) {
           const action = apiResponse.action[i];
-          // Mettre à jour l'état isExecuting
+          // Update isExecuting state
           assistantMessage.snapshot.segments[0].actions[i].isExecuting = true;
           setMessages([...baseMessages, assistantMessage]);
           
           const result = await MessageHandler.executeSingleAction(page, action);
           actionResults.push(result);
           
-          // Met à jour l'état success pour l'action terminée
+          // Update success state for completed action
           assistantMessage.snapshot.segments[0].actions[i].isExecuting = false;
           assistantMessage.snapshot.segments[0].actions[i].success = result.success;
           setMessages([...baseMessages, assistantMessage]);
@@ -223,18 +223,18 @@ export default function SidebarApp() {
         }
       }
 
-      // Boucle de suivi
+      // Follow-up loop
       let lastResponse = apiResponse;
       while (!abortController.signal.aborted && lastResponse.action && lastResponse.action.length > 0) {
-        // Vérifier si la nouvelle réponse contient une action de fin
+        // Check if new response contains a final action
         const hasCompletion = lastResponse.action.some(a => 
           'done' in a || 'ask' in a
         );
         if (hasCompletion) {
-          break; // Sortir de la boucle immédiatement
+          break; // Exit loop immediately
         }
 
-        // Ajouter un nouveau segment "Thinking..." pour le follow-up
+        // Add new "Thinking..." segment for follow-up
         if (assistantMessage.snapshot?.segments) {
           assistantMessage.snapshot.segments.push({ content: "Thinking...", actions: [] });
         }
@@ -250,7 +250,7 @@ export default function SidebarApp() {
         
         if (abortController.signal.aborted) break;
 
-        // Remplace le dernier "Thinking..." par la réponse avec les actions
+        // Replace last "Thinking..." with response with actions
         const followupContent = followupResponse.message || followupResponse.content;
         if (assistantMessage.snapshot?.segments) {
           const lastSegmentIndex = assistantMessage.snapshot.segments.length - 1;
@@ -263,19 +263,19 @@ export default function SidebarApp() {
           };
           assistantMessage.content = followupContent;
 
-          // Exécution séquentielle des nouvelles actions avec mise à jour des états
+          // Sequential execution of new actions with state updates
           let followupResults = [];
           if (page) {
             for (let i = 0; i < followupResponse.action.length; i++) {
               const action = followupResponse.action[i];
-              // Met à jour l'état isExecuting pour l'action courante
+              // Update isExecuting state for current action
               assistantMessage.snapshot.segments[lastSegmentIndex].actions[i].isExecuting = true;
               setMessages([...baseMessages, assistantMessage]);
               
               const result = await MessageHandler.executeSingleAction(page, action);
               followupResults.push(result);
               
-              // Met à jour l'état success pour l'action terminée
+              // Update success state for completed action
               assistantMessage.snapshot.segments[lastSegmentIndex].actions[i].isExecuting = false;
               assistantMessage.snapshot.segments[lastSegmentIndex].actions[i].success = result.success;
               setMessages([...baseMessages, assistantMessage]);
@@ -301,7 +301,7 @@ export default function SidebarApp() {
         console.error('Error processing message:', error);
         if (assistantMessage.snapshot?.segments) {
           assistantMessage.snapshot.segments.push({
-            content: `Erreur : ${error instanceof Error ? error.message : 'Erreur inconnue'}`,
+            content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
             actions: []
           });
           newMessages = [...baseMessages, assistantMessage];
