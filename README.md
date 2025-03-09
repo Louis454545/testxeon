@@ -39,7 +39,7 @@ See Xeon Agent in action:
 
 ## 🚀 Installation
 
-1. Clone this repository
+1. get the extension from the release and unzip it
 2. Open Chrome and go to `chrome://extensions/`
 3. Enable "Developer mode"
 4. Click "Load unpacked extension"
