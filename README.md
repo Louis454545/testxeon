@@ -17,7 +17,7 @@ Unlike other solutions, Xeon Agent:
 
 See Xeon Agent in action:
 
-![Xeon Agent Demo](https://github.com/Louis454545/xeon-agent/assets/demo.gif)
+<img src="./assets/demo.gif" alt="Xeon Agent Demo" width="800"/>
 
 *Watch how Xeon Agent can help you automate browser tasks with simple natural language commands.*
 
