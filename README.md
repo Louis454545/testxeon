@@ -15,7 +15,7 @@ Unlike other solutions, Xeon Agent:
 
 ## 📝 Message from the Author
 
-> Hi! I'm a 14-year-old developer passionate about automation. This project was born from my curiosity for AI and web automation.
+> Hi! I'm a developer passionate about automation. This project was born from my curiosity for AI and web automation.
 > 
 > To be honest, I was mostly familiar with backend development before starting this project, and Chrome extensions were new to me. That's why the code isn't always elegant (let's face it, it's sometimes garbage 😅).
 > 
