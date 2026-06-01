@@ -1,383 +1,286 @@
-import { useState, useRef, useEffect } from "react"
-import { Header } from "./components/Header"
-import { MessageList } from "./components/MessageList"
-import { MessageInput } from "./components/MessageInput"
-import { ConversationsPage } from "./components/ConversationsPage"
-import { SettingsPage } from "./components/SettingsPage"
-import { Message, Conversation, createMessage } from "./types"
-import { MessageHandler } from "./components/MessageHandler"
-import './styles.css'
-import { UnsupportedUrlView } from "./components/UnsupportedUrlView"
+import { useEffect, useMemo, useRef, useState } from "react";
+import { Header } from "./components/Header";
+import { MessageList } from "./components/MessageList";
+import { MessageInput } from "./components/MessageInput";
+import { ConversationsPage } from "./components/ConversationsPage";
+import { SettingsPage } from "./components/SettingsPage";
+import { RunsPage } from "./components/RunsPage";
+import { UnsupportedUrlView } from "./components/UnsupportedUrlView";
+import { AgentStatusPanel } from "./components/AgentStatusPanel";
+import type { Conversation, Message } from "./types";
+import {
+  deleteConversation,
+  listConversations,
+  saveConversationMessages,
+} from "../src/storage/conversations";
+import type { AgentRun, ChatMessage } from "../src/shared/types";
+import "./styles.css";
 
-type View = 'chat' | 'conversations' | 'settings';
-type Theme = 'light' | 'dark' | 'system';
+type View = "chat" | "conversations" | "runs" | "settings";
 
 export default function SidebarApp() {
-  const [messages, setMessages] = useState<Message[]>([])
-  const [isSending, setIsSending] = useState(false)
-  const [currentView, setCurrentView] = useState<View>('chat')
-  const [conversations, setConversations] = useState<Conversation[]>([])
-  const [searchQuery, setSearchQuery] = useState("")
-  const [currentConversationId, setCurrentConversationId] = useState<string | null>(null)
-  const [isSupportedUrl, setIsSupportedUrl] = useState(true)
-
-  // Reference to handle the cancellation of the sending process
-  const cancelSending = useRef<() => void | null>(null);
+  const [messages, setMessages] = useState<Message[]>([]);
+  const [isSending, setIsSending] = useState(false);
+  const [currentView, setCurrentView] = useState<View>("chat");
+  const [conversations, setConversations] = useState<Conversation[]>([]);
+  const [searchQuery, setSearchQuery] = useState("");
+  const [currentConversationId, setCurrentConversationId] = useState<string>(() => crypto.randomUUID());
+  const [isSupportedUrl, setIsSupportedUrl] = useState(true);
+  const [activeRun, setActiveRun] = useState<AgentRun | null>(null);
+  const abortControllerRef = useRef<AbortController | null>(null);
 
   useEffect(() => {
-    // Initialize theme from storage on mount
-    chrome.storage.local.get('theme', (result) => {
-      const savedTheme = result.theme ?? 'system'
-      if (savedTheme === 'system') {
-        const isDarkMode = window.matchMedia('(prefers-color-scheme: dark)').matches
-        document.documentElement.className = isDarkMode ? 'dark' : ''
+    chrome.storage.local.get("theme", (result) => {
+      const savedTheme = result.theme ?? "system";
+      if (savedTheme === "system") {
+        document.documentElement.className = window.matchMedia("(prefers-color-scheme: dark)").matches
+          ? "dark"
+          : "";
       } else {
-        document.documentElement.className = savedTheme === 'dark' ? 'dark' : ''
+        document.documentElement.className = savedTheme === "dark" ? "dark" : "";
       }
-    })
-  }, [])
+    });
+  }, []);
+
+  useEffect(() => {
+    refreshConversations();
+  }, []);
 
   useEffect(() => {
     const checkUrl = async () => {
       try {
         const [tab] = await chrome.tabs.query({ active: true, currentWindow: true });
-        const url = tab?.url || '';
-        const allowedProtocols = ['http:', 'https:', 'file:'];
-        setIsSupportedUrl(allowedProtocols.some(p => url.startsWith(p)));
-      } catch (error) {
-        console.error('Error checking URL:', error);
+        const url = tab?.url || "";
+        setIsSupportedUrl(["http:", "https:", "file:"].some((protocol) => url.startsWith(protocol)));
+      } catch {
         setIsSupportedUrl(false);
       }
     };
 
     checkUrl();
-    const interval = setInterval(checkUrl, 1000);
-    return () => clearInterval(interval);
+    const interval = window.setInterval(checkUrl, 1000);
+    return () => window.clearInterval(interval);
   }, []);
 
+  const filteredConversations = useMemo(
+    () =>
+      conversations.filter(
+        (conversation) =>
+          conversation.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+          conversation.preview.toLowerCase().includes(searchQuery.toLowerCase()),
+      ),
+    [conversations, searchQuery],
+  );
+
+  const refreshConversations = async () => {
+    const stored = await listConversations();
+    setConversations(
+      stored.map((conversation) => ({
+        id: conversation.id,
+        title: conversation.title,
+        messages: conversation.messages.map(fromStoredMessage),
+        lastUpdated: new Date(conversation.lastUpdated),
+        preview: conversation.preview,
+      })),
+    );
+  };
+
   const handleCancelMessage = () => {
-    if (isSending) {
-      cancelSending.current?.();
-      cancelSending.current = null;
-      setIsSending(false);
-    }
-  }
+    abortControllerRef.current?.abort();
+    abortControllerRef.current = null;
+    setIsSending(false);
+  };
 
   const handleNewConversation = () => {
-    MessageHandler.closeConnection();
+    abortControllerRef.current?.abort();
     setMessages([]);
-    setCurrentConversationId(null);
-    setCurrentView('chat');
-  }
+    setActiveRun(null);
+    setCurrentConversationId(crypto.randomUUID());
+    setCurrentView("chat");
+  };
 
-  const handleViewConversations = () => {
-    // Save current conversation only if it has messages
-    if (currentConversationId && messages.length > 0) {
-      updateConversation(currentConversationId, messages)
-    } else if (!currentConversationId && messages.length > 0) {
-      // Create new conversation if there are messages but no ID
-      createNewConversation(messages)
-    }
-    setCurrentView('conversations')
-  }
-
-  const handleViewSettings = () => {
-    setCurrentView('settings')
-  }
-
-  const createNewConversation = (msgs: Message[]) => {
-    if (msgs.length === 0) return // Don't create empty conversations
-    
-    const newId = Date.now().toString()
-    const newConversation: Conversation = {
-      id: newId,
-      title: `Conversation ${conversations.length + 1}`,
-      messages: msgs,
-      lastUpdated: new Date(),
-      preview: msgs[msgs.length - 1]?.content || ""
-    }
-    setConversations([...conversations, newConversation])
-    setCurrentConversationId(newId)
-  }
-
-  const updateConversation = (id: string, newMessages: Message[]) => {
-    if (newMessages.length === 0) {
-      // Remove conversation if it becomes empty
-      setConversations(prevConversations => 
-        prevConversations.filter(conv => conv.id !== id)
-      )
-      return
-    }
-
-    setConversations(prevConversations => 
-      prevConversations.map(conv => {
-        if (conv.id === id) {
-          return {
-            ...conv,
-            messages: newMessages,
-            lastUpdated: new Date(),
-            preview: newMessages[newMessages.length - 1]?.content || "",
-          }
-        }
-        return conv
-      })
-    )
-  }
+  const persistMessages = async (conversationId: string, nextMessages: Message[]) => {
+    if (nextMessages.length === 0) return;
+    await saveConversationMessages(conversationId, nextMessages.map(toStoredMessage));
+    await refreshConversations();
+  };
 
   const handleSubmitMessage = async (content: string) => {
     const abortController = new AbortController();
-    cancelSending.current = () => abortController.abort();
-
+    abortControllerRef.current = abortController;
     setIsSending(true);
+    setActiveRun(null);
 
-    // Add user message
+    const conversationId = currentConversationId || crypto.randomUUID();
+    setCurrentConversationId(conversationId);
+
     const userMessage: Message = {
+      id: crypto.randomUUID(),
       content,
       isUser: true,
       timestamp: new Date(),
     };
-    const baseMessages = [...messages, userMessage];
-    setMessages(baseMessages);
-    if (currentConversationId) {
-      updateConversation(currentConversationId, baseMessages);
-    } else {
-      createNewConversation(baseMessages);
-    }
+    const assistantMessage: Message = {
+      id: crypto.randomUUID(),
+      content: "Thinking...",
+      isUser: false,
+      timestamp: new Date(),
+      snapshot: {
+        segments: [{ content: "Thinking...", actions: [], status: "thinking" }],
+      },
+    };
 
-    // Create assistant message with segment structure
-    let assistantMessage = createMessage("", false);
-    assistantMessage.tempId = Date.now();
-    assistantMessage.snapshot = { segments: [{ content: "Thinking...", actions: [] }] };
-    let newMessages = [...baseMessages, assistantMessage];
-    setMessages(newMessages);
-    if (currentConversationId) updateConversation(currentConversationId, newMessages);
+    const baseMessages = [...messages, userMessage, assistantMessage];
+    setMessages(baseMessages);
+    await persistMessages(conversationId, baseMessages);
+
+    const updateAssistantFromRun = (run: AgentRun) => {
+      setActiveRun(run);
+      setMessages((current) => {
+        const next = current.map((message) =>
+          message.id === assistantMessage.id
+            ? {
+                ...message,
+                runId: run.id,
+                content: getRunDisplayContent(run),
+                snapshot: { segments: run.steps },
+              }
+            : message,
+        );
+        return next;
+      });
+    };
 
     try {
-      const [apiResponse, page, browser] = await MessageHandler.getApiResponse(
+      const { AgentRunner } = await import("../src/agent/AgentRunner");
+      const run = await new AgentRunner().run(
         content,
-        null,
-        [],
-        abortController
-      );
-      
-      // Immediately check for final actions
-      const isFinalAction = apiResponse.action?.some(a => 
-        'done' in a || 'ask' in a
+        {
+          conversationId,
+          previousMessages: messages.map(toStoredMessage),
+          onRunUpdate: updateAssistantFromRun,
+        },
+        abortController.signal,
       );
 
-      // Update the message
-      const messageContent = apiResponse.message || apiResponse.content;
-      assistantMessage.content = messageContent;
-      
-      if (isFinalAction) {
-        assistantMessage.snapshot = {
-          segments: [{
-            content: messageContent,
-            actions: apiResponse.action.map(action => ({ action }))
-          }]
-        };
-        setMessages([...baseMessages, assistantMessage]);
-        setIsSending(false);
-        return;
-      }
-
-      // Replace "Thinking..." segment with actual response
-      if (assistantMessage.snapshot?.segments) {
-        assistantMessage.snapshot.segments[0] = {
-          content: messageContent,
-          actions: apiResponse.action.map(action => ({
-            action,
-            isExecuting: false,
-            success: undefined
-          }))
-        };
-        setMessages([...baseMessages, assistantMessage]);
-      }
-
-      // Sequential execution of actions with state updates
-      let actionResults = [];
-      if (page && assistantMessage.snapshot?.segments?.[0]) {
-        // Initialize action array with default values
-        assistantMessage.snapshot.segments[0].actions = apiResponse.action.map(action => ({
-          action,
-          isExecuting: false,
-          success: undefined
-        }));
-        setMessages([...baseMessages, assistantMessage]);
-
-        for (let i = 0; i < apiResponse.action.length; i++) {
-          const action = apiResponse.action[i];
-          // Update isExecuting state
-          assistantMessage.snapshot.segments[0].actions[i].isExecuting = true;
-          setMessages([...baseMessages, assistantMessage]);
-          
-          const result = await MessageHandler.executeSingleAction(page, action);
-          actionResults.push(result);
-          
-          // Update success state for completed action
-          assistantMessage.snapshot.segments[0].actions[i].isExecuting = false;
-          assistantMessage.snapshot.segments[0].actions[i].success = result.success;
-          setMessages([...baseMessages, assistantMessage]);
-          
-          await new Promise(resolve => setTimeout(resolve, 300));
-        }
-      }
-
-      // Follow-up loop
-      let lastResponse = apiResponse;
-      while (!abortController.signal.aborted && lastResponse.action && lastResponse.action.length > 0) {
-        // Check if new response contains a final action
-        const hasCompletion = lastResponse.action.some(a => 
-          'done' in a || 'ask' in a
-        );
-        if (hasCompletion) {
-          break; // Exit loop immediately
-        }
-
-        // Add new "Thinking..." segment for follow-up
-        if (assistantMessage.snapshot?.segments) {
-          assistantMessage.snapshot.segments.push({ content: "Thinking...", actions: [] });
-        }
-        newMessages = [...baseMessages, assistantMessage];
-        setMessages(newMessages);
-        if (currentConversationId) updateConversation(currentConversationId, newMessages);
-
-        const [followupResponse] = await MessageHandler.getApiResponse(
-          undefined, 
-          page, 
-          actionResults
-        );
-        
-        if (abortController.signal.aborted) break;
-
-        // Replace last "Thinking..." with response with actions
-        const followupContent = followupResponse.message || followupResponse.content;
-        if (assistantMessage.snapshot?.segments) {
-          const lastSegmentIndex = assistantMessage.snapshot.segments.length - 1;
-          assistantMessage.snapshot.segments[lastSegmentIndex] = {
-            content: followupContent,
-            actions: followupResponse.action.map(action => ({
-              action,
-              isExecuting: false
-            }))
-          };
-          assistantMessage.content = followupContent;
-
-          // Sequential execution of new actions with state updates
-          let followupResults = [];
-          if (page) {
-            for (let i = 0; i < followupResponse.action.length; i++) {
-              const action = followupResponse.action[i];
-              // Update isExecuting state for current action
-              assistantMessage.snapshot.segments[lastSegmentIndex].actions[i].isExecuting = true;
-              setMessages([...baseMessages, assistantMessage]);
-              
-              const result = await MessageHandler.executeSingleAction(page, action);
-              followupResults.push(result);
-              
-              // Update success state for completed action
-              assistantMessage.snapshot.segments[lastSegmentIndex].actions[i].isExecuting = false;
-              assistantMessage.snapshot.segments[lastSegmentIndex].actions[i].success = result.success;
-              setMessages([...baseMessages, assistantMessage]);
-              
-              await new Promise(resolve => setTimeout(resolve, 300));
+      const finalMessages = baseMessages.map((message) =>
+        message.id === assistantMessage.id
+          ? {
+              ...message,
+              runId: run.id,
+              content: getRunDisplayContent(run),
+              snapshot: { segments: run.steps },
             }
-          }
-          
-          lastResponse = followupResponse;
-          actionResults = followupResults;
-        }
-      }
-    } catch (error) {
-      if (error.name === 'AbortError') {
-        setMessages(prev => {
-          const lastMessage = prev[prev.length - 1];
-          if (lastMessage?.content === "" && lastMessage?.snapshot?.segments?.[0]?.content === "Thinking...") {
-            return prev.slice(0, -1);
-          }
-          return prev;
-        });
-      } else {
-        console.error('Error processing message:', error);
-        if (assistantMessage.snapshot?.segments) {
-          assistantMessage.snapshot.segments.push({
-            content: `Error: ${error instanceof Error ? error.message : 'Unknown error'}`,
-            actions: []
-          });
-          newMessages = [...baseMessages, assistantMessage];
-          setMessages(newMessages);
-        }
-        if (currentConversationId) updateConversation(currentConversationId, newMessages);
-      }
+          : message,
+      );
+      setActiveRun(run);
+      setMessages(finalMessages);
+      await persistMessages(conversationId, finalMessages);
     } finally {
+      abortControllerRef.current = null;
       setIsSending(false);
     }
   };
 
   const handleSelectConversation = (id: string) => {
-    const conversation = conversations.find(conv => conv.id === id)
-    if (conversation) {
-      setMessages(conversation.messages)
-      setCurrentConversationId(id)
-      setCurrentView('chat')
-    }
-  }
+    const conversation = conversations.find((candidate) => candidate.id === id);
+    if (!conversation) return;
+    setMessages(conversation.messages);
+    setCurrentConversationId(id);
+    setCurrentView("chat");
+  };
 
-  const handleDeleteConversation = (id: string) => {
-    setConversations(prevConversations => 
-      prevConversations.filter(conv => conv.id !== id)
-    )
-
-    // If we're deleting the current conversation, clear the current state
+  const handleDeleteConversation = async (id: string) => {
+    await deleteConversation(id);
     if (id === currentConversationId) {
-      setMessages([])
-      setCurrentConversationId(null)
+      setMessages([]);
+      setCurrentConversationId(crypto.randomUUID());
     }
-  }
-
-  const handleSearch = (query: string) => {
-    setSearchQuery(query)
-  }
-
-  const filteredConversations = conversations.filter(conversation =>
-    conversation.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    conversation.preview.toLowerCase().includes(searchQuery.toLowerCase())
-  )
+    await refreshConversations();
+  };
 
   return (
-    <div className="h-full flex flex-col">
+    <div className="h-full flex flex-col bg-background text-foreground">
       {isSupportedUrl ? (
         <>
-          <Header 
+          <Header
+            activeView={currentView}
             onNewConversation={handleNewConversation}
-            onViewConversations={handleViewConversations}
-            onViewSettings={handleViewSettings}
+            onViewChat={() => setCurrentView("chat")}
+            onViewConversations={() => setCurrentView("conversations")}
+            onViewRuns={() => setCurrentView("runs")}
+            onViewSettings={() => setCurrentView("settings")}
           />
-          {currentView === 'chat' ? (
+          {currentView === "chat" ? (
             <>
+              <AgentStatusPanel run={activeRun} isSending={isSending} />
               <MessageList messages={messages} />
-              <MessageInput 
+              <MessageInput
                 onSubmit={handleSubmitMessage}
                 isSending={isSending}
                 onCancel={handleCancelMessage}
               />
             </>
-          ) : currentView === 'conversations' ? (
+          ) : currentView === "conversations" ? (
             <ConversationsPage
               conversations={filteredConversations}
               onSelectConversation={handleSelectConversation}
               onDeleteConversation={handleDeleteConversation}
-              onSearch={handleSearch}
+              onSearch={setSearchQuery}
             />
+          ) : currentView === "runs" ? (
+            <RunsPage />
           ) : (
             <SettingsPage />
           )}
         </>
       ) : (
-        <UnsupportedUrlView onRedirect={() => {
-          chrome.tabs.update({ url: 'https://www.google.com' });
-        }} />
+        <UnsupportedUrlView
+          onRedirect={() => {
+            chrome.tabs.update({ url: "https://www.google.com" });
+          }}
+        />
       )}
     </div>
-  )
+  );
+}
+
+function toStoredMessage(message: Message): ChatMessage {
+  return {
+    id: message.id || crypto.randomUUID(),
+    content: message.content,
+    isUser: message.isUser,
+    timestamp:
+      message.timestamp instanceof Date
+        ? message.timestamp.toISOString()
+        : new Date(message.timestamp).toISOString(),
+    runId: message.runId,
+    segments: message.snapshot?.segments as ChatMessage["segments"],
+  };
+}
+
+function fromStoredMessage(message: ChatMessage): Message {
+  return {
+    id: message.id,
+    content: message.content,
+    isUser: message.isUser,
+    timestamp: new Date(message.timestamp),
+    runId: message.runId,
+    snapshot: message.segments ? { segments: message.segments } : undefined,
+  };
+}
+
+function getRunDisplayContent(run: AgentRun): string {
+  const done = run.steps
+    .flatMap((step) => step.actions)
+    .find(({ action }) => "done" in action)?.action;
+  if (done && "done" in done) return done.done.message;
+
+  const ask = run.steps
+    .flatMap((step) => step.actions)
+    .find(({ action }) => "ask" in action)?.action;
+  if (ask && "ask" in ask) return ask.ask.query;
+
+  if (run.error) return run.error;
+  return [...run.steps].reverse().find((step) => step.message)?.message || "Done";
 }

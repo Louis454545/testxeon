@@ -1,11 +1,8 @@
-/**
- * API Response from the AI
- */
 export interface ApiResponse {
   conversation_id: string;
   message?: string;
   content?: string;
-  action?: any[];
+  action?: Action[];
 }
 
 /**
@@ -59,7 +56,8 @@ export interface Action {
     description?: string;
   };
   wait?: {
-    duration: number;
+    duration?: number;
+    time?: number;
     description?: string;
   };
   ask?: {

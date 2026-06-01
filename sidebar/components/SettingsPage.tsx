@@ -1,193 +1,182 @@
-import { useState, useEffect } from 'react';
-import { saveAIConfig } from '../utils/api';
-import { Card, CardHeader, CardTitle, CardDescription, CardContent } from "@/components/ui/card";
-import { Label } from "@/components/ui/label";
+import { useEffect, useState } from "react";
+import { AlertCircle, CheckCircle, RotateCcw } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
+import { Input } from "@/components/ui/input";
+import { Label } from "@/components/ui/label";
 import { RadioGroup, RadioGroupItem } from "@/components/ui/radio-group";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Input } from "@/components/ui/input";
 import { Switch } from "@/components/ui/switch";
-import { AlertCircle, CheckCircle } from "lucide-react";
-
-type Provider = 'google' | 'openai';
-
-interface AISettings {
-  apiKey: string;
-  model: string;
-  temperature: number;
-  provider: Provider;
-}
-
-interface ProviderConfig {
-  name: string;
-  models: string[];
-}
-
-const PROVIDERS: Record<Provider, ProviderConfig> = {
-  google: {
-    name: 'Google Gemini',
-    models: ['gemini-2.0-flash', 'gemini-1.5-flash', 'gemini-1.5-pro', 'gemini-1.0-pro']
-  },
-  openai: {
-    name: 'OpenAI',
-    models: ['gpt-4o', 'gpt-4', 'gpt-3.5-turbo']
-  }
-};
+import { getDefaultModel, getModelsForProvider } from "../../src/agent/modelRegistry";
+import { getSettings, getSystemPrompt, resetSystemPrompt, saveSettings, saveSystemPrompt } from "../../src/storage/settings";
+import type { AISettings, ProviderId } from "../../src/shared/types";
 
 export function SettingsPage() {
-  const [settings, setSettings] = useState<AISettings>({
-    apiKey: '',
-    model: 'gemini-2.0-flash',
-    temperature: 1.0,
-    provider: 'google'
-  });
-
+  const [settings, setSettings] = useState<AISettings | null>(null);
+  const [prompt, setPrompt] = useState("");
   const [isSaving, setIsSaving] = useState(false);
-  const [saveStatus, setSaveStatus] = useState('');
+  const [saveStatus, setSaveStatus] = useState<"success" | "error" | "">("");
 
-  // Load settings when component mounts
   useEffect(() => {
-    const loadSettings = async () => {
-      const data = await chrome.storage.local.get(['aiConfig']);
-      if (data.aiConfig) {
-        setSettings(data.aiConfig);
-      }
+    const load = async () => {
+      setSettings(await getSettings());
+      setPrompt(await getSystemPrompt());
     };
-
-    loadSettings();
+    load();
   }, []);
 
-  const handleProviderChange = (provider: Provider) => {
+  if (!settings) {
+    return <div className="flex-1 p-4 text-sm text-muted-foreground">Loading settings...</div>;
+  }
+
+  const providerModels = getModelsForProvider(settings.provider);
+
+  const handleProviderChange = (provider: ProviderId) => {
     setSettings({
       ...settings,
       provider,
-      model: PROVIDERS[provider].models[0]
+      model: getDefaultModel(provider),
     });
   };
 
   const handleSave = async () => {
     setIsSaving(true);
-    setSaveStatus('');
+    setSaveStatus("");
     try {
-      await saveAIConfig(settings);
-      setSaveStatus('success');
-      setTimeout(() => setSaveStatus(''), 3000);
+      await saveSettings(settings);
+      await saveSystemPrompt(prompt);
+      setSaveStatus("success");
     } catch (error) {
-      console.error('Error saving settings', error);
-      setSaveStatus('error');
-      setTimeout(() => setSaveStatus(''), 3000);
+      console.error("Error saving settings", error);
+      setSaveStatus("error");
     } finally {
       setIsSaving(false);
+      window.setTimeout(() => setSaveStatus(""), 3000);
     }
   };
 
+  const handleResetPrompt = async () => {
+    setPrompt(await resetSystemPrompt());
+  };
+
   return (
-    <div className="flex-1 p-4 space-y-4 overflow-auto">
-      <Card>
-        <CardHeader>
-          <CardTitle>AI Provider</CardTitle>
-          <CardDescription>
-            Choose which AI provider to use
-          </CardDescription>
-        </CardHeader>
-        <CardContent>
-          <RadioGroup
-            value={settings.provider}
-            onValueChange={(value: string) => handleProviderChange(value as Provider)}
-            className="flex flex-col space-y-2"
-          >
-            {Object.entries(PROVIDERS).map(([provider, config]) => (
-              <div key={provider} className="flex items-center space-x-2">
-                <RadioGroupItem value={provider} id={provider} />
-                <Label htmlFor={provider}>{config.name}</Label>
-              </div>
-            ))}
-          </RadioGroup>
-        </CardContent>
-      </Card>
-
-      <Card>
-        <CardHeader>
-          <CardTitle>API Settings</CardTitle>
-          <CardDescription>
-            Configure your API connection
-          </CardDescription>
-        </CardHeader>
-        <CardContent className="space-y-4">
-          <div className="space-y-2">
-            <Label htmlFor="apiKey">API Key</Label>
-            <Input
-              id="apiKey"
-              type="password"
-              value={settings.apiKey}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => setSettings({...settings, apiKey: e.target.value})}
-              placeholder={`Your ${PROVIDERS[settings.provider].name} API Key`}
-            />
-          </div>
-
-          <div className="space-y-2">
-            <Label htmlFor="model">Model</Label>
-            <Select 
-              value={settings.model} 
-              onValueChange={(value: string) => setSettings({...settings, model: value})}
+    <div className="flex-1 overflow-auto">
+      <div className="p-4 space-y-4">
+        <Card>
+          <CardHeader>
+            <CardTitle>Model</CardTitle>
+            <CardDescription>AI SDK provider and model used by the local extension agent.</CardDescription>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <RadioGroup
+              value={settings.provider}
+              onValueChange={(value) => handleProviderChange(value as ProviderId)}
+              className="grid grid-cols-2 gap-2"
             >
-              <SelectTrigger id="model">
-                <SelectValue placeholder="Select a model" />
-              </SelectTrigger>
-              <SelectContent>
-                {PROVIDERS[settings.provider].models.map(model => (
-                  <SelectItem key={model} value={model}>{model}</SelectItem>
-                ))}
-              </SelectContent>
-            </Select>
-          </div>
+              <ProviderOption id="google" label="Google" />
+              <ProviderOption id="openai" label="OpenAI" />
+            </RadioGroup>
 
-          <div className="space-y-2">
-            <div className="flex justify-between">
-              <Label htmlFor="temperature">Temperature: {settings.temperature.toFixed(1)}</Label>
+            <div className="space-y-2">
+              <Label htmlFor="model">Model</Label>
+              <Select
+                value={settings.model}
+                onValueChange={(model) => setSettings({ ...settings, model })}
+              >
+                <SelectTrigger id="model">
+                  <SelectValue placeholder="Select model" />
+                </SelectTrigger>
+                <SelectContent>
+                  {providerModels.map((model) => (
+                    <SelectItem key={model.id} value={model.id}>
+                      {model.name}
+                    </SelectItem>
+                  ))}
+                </SelectContent>
+              </Select>
             </div>
-            <input
-              id="temperature"
-              type="range"
-              min={0}
-              max={2}
-              step={0.1}
-              value={settings.temperature}
-              onChange={(e: React.ChangeEvent<HTMLInputElement>) => 
-                setSettings({...settings, temperature: parseFloat(e.target.value)})}
-              className="w-full"
+
+            <div className="space-y-2">
+              <Label htmlFor="apiKey">API key</Label>
+              <Input
+                id="apiKey"
+                type="password"
+                value={settings.apiKey}
+                onChange={(event) => setSettings({ ...settings, apiKey: event.target.value })}
+                placeholder={settings.provider === "google" ? "Google API key" : "OpenAI API key"}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader>
+            <CardTitle>Capture</CardTitle>
+            <CardDescription>Visual context sent to the model for page understanding.</CardDescription>
+          </CardHeader>
+          <CardContent>
+            <div className="flex items-center justify-between rounded-md border p-3">
+              <div>
+                <Label htmlFor="screenshots">Screenshots</Label>
+                <p className="text-xs text-muted-foreground">Send annotated page screenshots to vision models.</p>
+              </div>
+              <Switch
+                id="screenshots"
+                checked={settings.screenshotsEnabled}
+                onCheckedChange={(screenshotsEnabled) => setSettings({ ...settings, screenshotsEnabled })}
+              />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card>
+          <CardHeader className="flex flex-row items-start justify-between gap-3">
+            <div>
+              <CardTitle>System prompt</CardTitle>
+              <CardDescription>Shared instruction used for every automation step.</CardDescription>
+            </div>
+            <Button variant="ghost" size="icon" className="h-8 w-8" onClick={handleResetPrompt}>
+              <RotateCcw className="h-4 w-4" />
+            </Button>
+          </CardHeader>
+          <CardContent>
+            <textarea
+              value={prompt}
+              onChange={(event) => setPrompt(event.target.value)}
+              className="min-h-[220px] w-full resize-y rounded-md border bg-background p-3 text-xs leading-relaxed outline-none focus:border-primary/60"
             />
-            <div className="flex justify-between text-xs text-muted-foreground">
-              <span>Precise</span>
-              <span>Balanced</span>
-              <span>Creative</span>
-            </div>
-          </div>
-        </CardContent>
-      </Card>
+          </CardContent>
+        </Card>
 
-      <div className="flex justify-between items-center">
-        <div>
-          {saveStatus === 'success' && (
-            <div className="flex items-center text-green-600 gap-1">
-              <CheckCircle className="w-4 h-4" />
-              <span className="text-sm">Settings saved!</span>
-            </div>
-          )}
-          {saveStatus === 'error' && (
-            <div className="flex items-center text-red-600 gap-1">
-              <AlertCircle className="w-4 h-4" />
-              <span className="text-sm">Error saving settings</span>
-            </div>
-          )}
+        <div className="flex items-center justify-between pb-3">
+          <div>
+            {saveStatus === "success" && (
+              <div className="flex items-center gap-1 text-sm text-green-600">
+                <CheckCircle className="h-4 w-4" />
+                Saved
+              </div>
+            )}
+            {saveStatus === "error" && (
+              <div className="flex items-center gap-1 text-sm text-destructive">
+                <AlertCircle className="h-4 w-4" />
+                Save failed
+              </div>
+            )}
+          </div>
+          <Button onClick={handleSave} disabled={isSaving}>
+            {isSaving ? "Saving..." : "Save settings"}
+          </Button>
         </div>
-        <Button 
-          onClick={handleSave}
-          disabled={isSaving}
-        >
-          {isSaving ? 'Saving...' : 'Save Settings'}
-        </Button>
       </div>
     </div>
+  );
+}
+
+function ProviderOption({ id, label }: { id: ProviderId; label: string }) {
+  return (
+    <Label htmlFor={id} className="flex cursor-pointer items-center gap-2 rounded-md border p-3">
+      <RadioGroupItem id={id} value={id} />
+      <span>{label}</span>
+    </Label>
   );
 }

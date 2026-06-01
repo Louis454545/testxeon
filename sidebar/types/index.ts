@@ -1,11 +1,15 @@
 import type { ApiResponse, Action } from './api';
 
-interface MessageSegment {
-  content: string;
+export interface MessageSegment {
+  id?: string;
+  content?: string;
+  message?: string;
+  status?: "capturing" | "thinking" | "running" | "recovering" | "completed" | "failed" | "cancelled";
   actions: Array<{
     action: Action;
     success?: boolean;
     isExecuting?: boolean;
+    error?: string;
   }>;
 }
 
@@ -20,10 +24,12 @@ export interface Message {
   isUser: boolean;
   
   /** When the message was sent */
-  timestamp: Date;
+  timestamp: Date | string;
   
   /** Temporary ID for messages in progress */
   tempId?: number;
+  id?: string;
+  runId?: string;
   
   /** Response data from the API */
   snapshot?: {
@@ -96,8 +102,11 @@ export interface MessageInputProps {
 export interface HeaderProps {
   /** Callback to start a new conversation */
   onNewConversation: () => void;
+  activeView?: 'chat' | 'conversations' | 'runs' | 'settings';
+  onViewChat?: () => void;
   /** Callback to view conversation list */
   onViewConversations: () => void;
+  onViewRuns?: () => void;
   /** Callback to view settings */
   onViewSettings: () => void;
 }

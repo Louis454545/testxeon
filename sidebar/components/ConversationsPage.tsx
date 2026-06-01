@@ -1,94 +1,75 @@
-import { Search, Trash2 } from "lucide-react"
-import { Input } from "@/components/ui/input"
-import { Card } from "@/components/ui/card"
-import { Button } from "@/components/ui/button"
-import { ConversationsPageProps, Conversation } from "../types"
+import { Search, Trash2 } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { Input } from "@/components/ui/input";
+import type { Conversation, ConversationsPageProps } from "../types";
 
-function ConversationCard({ 
-  conversation, 
-  onClick, 
-  onDelete 
-}: { 
-  conversation: Conversation; 
-  onClick: () => void;
-  onDelete: (e: React.MouseEvent) => void;
-}) {
-  return (
-    <Card 
-      className="p-4 hover:bg-secondary/50 transition-colors"
-    >
-      <div className="flex justify-between items-start">
-        <div 
-          className="flex-1 cursor-pointer" 
-          onClick={onClick}
-        >
-          <div className="flex justify-between items-start mb-2">
-            <h3 className="font-medium">{conversation.title}</h3>
-            <span className="text-sm text-muted-foreground">
-              {conversation.lastUpdated.toLocaleDateString()}
-            </span>
-          </div>
-          <p className="text-sm text-muted-foreground line-clamp-2">
-            {conversation.preview}
-          </p>
-        </div>
-        <Button
-          variant="destructive"
-          size="icon"
-          className="ml-4 h-8 w-8"
-          onClick={onDelete}
-        >
-          <Trash2 className="h-4 w-4 text-white" />
-        </Button>
-      </div>
-    </Card>
-  )
-}
-
-export function ConversationsPage({ 
-  conversations, 
-  onSelectConversation, 
+export function ConversationsPage({
+  conversations,
+  onSelectConversation,
   onSearch,
-  onDeleteConversation
+  onDeleteConversation,
 }: ConversationsPageProps) {
-  const sortedConversations = [...conversations].sort(
-    (a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime()
-  )
+  const sorted = [...conversations].sort((a, b) => b.lastUpdated.getTime() - a.lastUpdated.getTime());
 
   return (
-    <div className="h-full flex flex-col">
-      <div className="p-4 border-b">
+    <div className="flex h-full flex-col">
+      <div className="border-b bg-background px-3 py-3">
         <div className="relative">
           <Search className="absolute left-3 top-2.5 h-4 w-4 text-muted-foreground" />
           <Input
-            placeholder="Search conversations..."
-            className="pl-10"
-            onChange={(e) => onSearch(e.target.value)}
+            placeholder="Search history..."
+            className="h-9 rounded-lg bg-card pl-9"
+            onChange={(event) => onSearch(event.target.value)}
           />
         </div>
       </div>
 
-      <div className="flex-1 overflow-y-auto p-4">
-        {sortedConversations.length > 0 ? (
-          <div className="space-y-4">
-            {sortedConversations.map((conversation) => (
-              <ConversationCard
+      <div className="flex-1 overflow-y-auto p-3">
+        {sorted.length === 0 ? (
+          <div className="rounded-lg border bg-card p-6 text-center text-sm text-muted-foreground">No conversations</div>
+        ) : (
+          <div className="space-y-2">
+            {sorted.map((conversation) => (
+              <ConversationRow
                 key={conversation.id}
                 conversation={conversation}
-                onClick={() => onSelectConversation(conversation.id)}
-                onDelete={(e) => {
-                  e.stopPropagation()
-                  onDeleteConversation(conversation.id)
-                }}
+                onOpen={() => onSelectConversation(conversation.id)}
+                onDelete={() => onDeleteConversation(conversation.id)}
               />
             ))}
-          </div>
-        ) : (
-          <div className="h-full flex items-center justify-center">
-            <p className="text-muted-foreground">No conversations yet</p>
           </div>
         )}
       </div>
     </div>
-  )
+  );
+}
+
+function ConversationRow({
+  conversation,
+  onOpen,
+  onDelete,
+}: {
+  conversation: Conversation;
+  onOpen: () => void;
+  onDelete: () => void;
+}) {
+  return (
+    <article className="group rounded-lg border bg-card p-3 transition-colors hover:bg-muted/30">
+      <div className="flex items-start gap-2">
+        <button type="button" className="min-w-0 flex-1 text-left" onClick={onOpen}>
+          <div className="truncate text-sm font-semibold">{conversation.title}</div>
+          <p className="mt-1 line-clamp-2 text-xs leading-relaxed text-muted-foreground">{conversation.preview}</p>
+          <div className="mt-2 text-[11px] text-muted-foreground">{conversation.lastUpdated.toLocaleString()}</div>
+        </button>
+        <Button
+          variant="ghost"
+          size="icon"
+          className="h-8 w-8 shrink-0 opacity-70 hover:opacity-100"
+          onClick={onDelete}
+        >
+          <Trash2 className="h-4 w-4 text-destructive" />
+        </Button>
+      </div>
+    </article>
+  );
 }

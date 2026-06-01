@@ -1,5 +1,4 @@
-import type { Page } from 'puppeteer-core/lib/types';
-import { nodeMap } from './pageCapture';
+import type { Page } from 'puppeteer-core/lib/esm/puppeteer/api/Page.js';
 
 const allowedRoles = new Set([
   'button',
@@ -66,10 +65,7 @@ export async function drawAccessibilityBoxes(page: Page, snapshot: any): Promise
     }
 
     try {
-      const storedNode = nodeMap.get(String(node.id));
-      if (!storedNode) return;
-
-      const elementHandle = await storedNode.elementHandle();
+      const elementHandle = await node.elementHandle();
       if (!elementHandle) return;
 
       const rect = await elementHandle.evaluate((el: Element) => {

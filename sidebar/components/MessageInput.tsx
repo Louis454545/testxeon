@@ -1,80 +1,73 @@
-import { useState } from "react"
-import { Button } from "@/components/ui/button"
-import { Input } from "@/components/ui/input"
-import { SendHorizontalIcon, Square } from "lucide-react"
-import { MessageInputProps } from "../types"
-import { cn } from "@/lib/utils"
+import { useState } from "react";
+import { SendHorizontalIcon, Square } from "lucide-react";
+import { Button } from "@/components/ui/button";
+import { cn } from "@/lib/utils";
+import type { MessageInputProps } from "../types";
+
+const presets = [
+  "Summarize this page",
+  "Find the next step",
+  "Fill the form",
+];
 
 export function MessageInput({ onSubmit, isSending, onCancel }: MessageInputProps) {
-  const [inputValue, setInputValue] = useState("")
+  const [inputValue, setInputValue] = useState("");
 
-  const handleSubmit = (e: React.FormEvent) => {
-    e.preventDefault()
-    if (!inputValue.trim()) return
-
-    onSubmit(inputValue.trim())
-    setInputValue("")
-  }
+  const submit = (value = inputValue) => {
+    const trimmed = value.trim();
+    if (!trimmed || isSending) return;
+    onSubmit(trimmed);
+    setInputValue("");
+  };
 
   return (
-    <form 
-      onSubmit={handleSubmit} 
-      className={cn(
-        "p-4",
-        "bg-transparent"
-      )}
-    >
-      <div className="flex items-center space-x-2 w-full">
-        <div className="relative flex-1 group">
-          <Input
-            type="text"
-            placeholder="Message for AI..."
-            value={inputValue}
-            onChange={(e) => setInputValue(e.target.value)}
-            className={cn(
-              "pr-12 py-6 text-base",
-              "rounded-2xl",
-              "bg-card/50 dark:bg-card/40",
-              "border-border/50",
-              "placeholder:text-muted-foreground/70",
-              "transition-all duration-200",
-              "hover:border-border/80",
-              "focus-visible:bg-card/80",
-              "focus-visible:ring-0",
-              "focus-visible:ring-offset-0",
-              "focus-visible:border-primary/50"
-            )}
-          />
-          <Button 
-            type={isSending ? "button" : "submit"}
-            size="icon"
-            variant="ghost"
-            onClick={isSending ? onCancel : undefined}
-            className={cn(
-              "absolute right-1.5 top-1/2 -translate-y-1/2",
-              "h-9 w-9",
-              "transition-all duration-200",
-              isSending ? 
-                "text-destructive hover:text-destructive hover:bg-destructive/10 animate-pulse"
-              : 
-                inputValue.trim() === "" ? 
-                  "text-primary hover:text-primary hover:bg-primary/10 opacity-70 pointer-events-none"
-                : 
-                  "text-primary hover:text-primary hover:bg-primary/10",
-              "hover:scale-105 active:scale-95"
-            )}
+    <footer className="border-t bg-background p-3">
+      <div className="mb-2 flex gap-1.5 overflow-x-auto">
+        {presets.map((preset) => (
+          <button
+            key={preset}
+            type="button"
+            onClick={() => submit(preset)}
+            disabled={isSending}
+            className="shrink-0 rounded-md border bg-muted/40 px-2.5 py-1.5 text-xs text-muted-foreground transition-colors hover:bg-muted hover:text-foreground disabled:opacity-50"
           >
-            {isSending ? (
-              <Square className="h-4 w-4 transition-transform hover:scale-110" />
-            ) : (
-              <SendHorizontalIcon className={cn(
-                "h-4 w-4 transition-all duration-200",
-                "group-hover:translate-x-0.5"
-              )} />
-            )}
-          </Button>
-        </div>
+            {preset}
+          </button>
+        ))}
       </div>
-    </form>
-  )
+      <form
+        onSubmit={(event) => {
+          event.preventDefault();
+          submit();
+        }}
+        className="relative"
+      >
+        <textarea
+          value={inputValue}
+          onChange={(event) => setInputValue(event.target.value)}
+          onKeyDown={(event) => {
+            if (event.key === "Enter" && !event.shiftKey) {
+              event.preventDefault();
+              submit();
+            }
+          }}
+          placeholder="Tell Xeon what to do..."
+          rows={2}
+          className={cn(
+            "max-h-32 min-h-[56px] w-full resize-none rounded-lg border bg-card px-3 py-2 pr-12 text-sm leading-relaxed outline-none",
+            "placeholder:text-muted-foreground/70 focus:border-primary/60",
+          )}
+        />
+        <Button
+          type={isSending ? "button" : "submit"}
+          size="icon"
+          variant={isSending ? "destructive" : "default"}
+          onClick={isSending ? onCancel : undefined}
+          className="absolute bottom-2 right-2 h-8 w-8"
+        >
+          {isSending ? <Square className="h-3.5 w-3.5" /> : <SendHorizontalIcon className="h-3.5 w-3.5" />}
+        </Button>
+      </form>
+    </footer>
+  );
 }
