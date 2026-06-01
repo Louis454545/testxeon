@@ -1,5 +1,7 @@
 # Xeon Agent
 
+![Xeon Agent Demo](assets/demo.gif)
+
 Xeon Agent is a local Chrome side-panel extension for AI browser automation. It connects to the active tab through the Chrome debugger protocol, captures the page accessibility tree and optional annotated screenshot, asks an AI model for the next validated action sequence, executes it, and repeats until the task is done or needs user input.
 
 ## What changed
